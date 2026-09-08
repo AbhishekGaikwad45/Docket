@@ -87,25 +87,6 @@ body{
   display:block;
 }
 
-.logo-jsw{
-  font-size:52px;
-  font-weight:900;
-  font-style:italic;
-  letter-spacing:-6px;
-  fill:#0756b9;
-}
-
-.logo-mark{
-  fill:#ed1c24;
-}
-
-.logo-tag{
-  fill:#ed1c24;
-  font-size:16px;
-  font-weight:700;
-  letter-spacing:.3px;
-}
-
 .hero-copy{
   position:relative;
   z-index:2;
@@ -254,7 +235,7 @@ body{
   width:min(470px,100%);
   position:relative;
   z-index:3;
-  padding:42px 44px 34px;
+  padding:38px 44px 34px;
   border-radius:24px;
   background:rgba(255,255,255,.98);
   box-shadow:0 28px 70px rgba(0,22,61,.30);
@@ -264,7 +245,7 @@ body{
 .card-logo{
   width:74px;
   height:74px;
-  margin:0 auto 20px;
+  margin:0 auto 16px;
   border-radius:50%;
   display:grid;
   place-items:center;
@@ -276,16 +257,45 @@ body{
 .login-card h2{
   margin:0;
   text-align:center;
-  font-size:30px;
+  font-size:28px;
   letter-spacing:-.7px;
   color:#12295b;
 }
 
 .login-sub{
-  margin:9px 0 30px;
+  margin:6px 0 20px;
   text-align:center;
   color:#7183a1;
-  font-size:15px;
+  font-size:14px;
+}
+
+/* Tab Switcher */
+.tab-container{
+  display:flex;
+  background:#eaf1fb;
+  padding:4px;
+  border-radius:12px;
+  margin-bottom:24px;
+  gap:4px;
+}
+
+.tab-btn{
+  flex:1;
+  border:0;
+  background:transparent;
+  padding:10px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:700;
+  color:#596d8e;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.tab-btn.active{
+  background:#ffffff;
+  color:#0756b9;
+  box-shadow:0 2px 6px rgba(7,86,185,.12);
 }
 
 .login-error{
@@ -295,6 +305,7 @@ body{
   color:#c51d2a;
   border:1px solid #ffd0d4;
   font-size:13px;
+  margin-bottom:16px;
 }
 
 .login-field{margin-bottom:18px}
@@ -302,7 +313,7 @@ body{
 .login-field label{
   display:block;
   margin-bottom:8px;
-  font-size:14px;
+  font-size:13px;
   font-weight:700;
   color:#34496d;
 }
@@ -320,7 +331,7 @@ body{
 
 .login-field input{
   width:100%;
-  height:56px;
+  height:52px;
   border:1px solid #cfdced;
   border-radius:12px;
   padding:0 16px 0 45px;
@@ -339,16 +350,16 @@ body{
 
 .primary{
   width:100%;
-  height:56px;
+  height:52px;
   border:0;
   border-radius:12px;
   cursor:pointer;
   color:white;
-  font-size:16px;
+  font-size:15px;
   font-weight:700;
   letter-spacing:.1px;
   background:#0756B9 !important;
-   background-image:linear-gradient(135deg,#0756B9,#0B6BD5) !important;
+  background-image:linear-gradient(135deg,#0756B9,#0B6BD5) !important;
   box-shadow:0 10px 22px rgba(7,86,185,.28) !important;
   transition:transform .18s ease,box-shadow .18s ease;
 }
@@ -358,26 +369,24 @@ body{
   box-shadow:0 14px 28px rgba(7,86,185,.35) !important;
 }
 
-.primary:active{transform:translateY(0)}
-
 .security-note{
   display:flex;
   gap:11px;
   align-items:flex-start;
   margin-top:18px;
-  padding:14px;
+  padding:12px;
   border-radius:12px;
   background:#f1f7ff;
   color:#647999;
-  font-size:13px;
+  font-size:12px;
   line-height:1.5;
 }
 
 .security-icon{
-  flex:0 0 30px;
-  width:30px;
-  height:30px;
-  border-radius:9px;
+  flex:0 0 26px;
+  width:26px;
+  height:26px;
+  border-radius:8px;
   display:grid;
   place-items:center;
   color:#0a69ce;
@@ -385,14 +394,17 @@ body{
 }
 
 .card-footer{
-  margin-top:26px;
-  padding-top:19px;
+  margin-top:22px;
+  padding-top:16px;
   border-top:1px solid #e3eaf4;
   text-align:center;
   color:#8a9ab3;
-  font-size:12px;
+  font-size:11px;
   letter-spacing:.8px;
 }
+
+.tab-pane{display:none}
+.tab-pane.active{display:block}
 
 @media(max-width:900px){
   #login-screen{display:block}
@@ -408,9 +420,9 @@ body{
 @media(max-width:520px){
   .login-left{padding:120px 24px 70px}
   .login-right{padding:30px 16px 50px}
-  .login-card{padding:32px 24px 28px;border-radius:18px}
-  .login-card h2{font-size:26px}
-  .hero-copy h1{font-size:40px}
+  .login-card{padding:30px 20px 24px;border-radius:18px}
+  .login-card h2{font-size:24px}
+  .hero-copy h1{font-size:38px}
   .values{line-height:2.3}
   .values span{padding:0 9px}
 }
@@ -461,7 +473,7 @@ body{
       </div>
 
       <h2>Department Portal</h2>
-      <p class="login-sub">Sign in securely with your employee ID</p>
+      <p class="login-sub">Select your sign-in method</p>
 
       {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -469,34 +481,94 @@ body{
         {% endif %}
       {% endwith %}
 
-      <form method="post" action="{{ url_for('send_otp') }}">
-        <div class="login-field">
-          <label for="emp-id">Employee ID</label>
-          <div class="input-wrap">
-            <span class="input-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="12" cy="8" r="4"></circle>
-                <path d="M4 21c.8-4 3.5-6 8-6s7.2 2 8 6"></path>
-              </svg>
-            </span>
-            <input id="emp-id" name="emp_id" type="text"
-                   placeholder="e.g. EMP1042" autocomplete="off" required>
-          </div>
-        </div>
-
-        <button class="primary" type="submit">
-          Send OTP
+      <!-- Tab Switcher -->
+      <div class="tab-container">
+        <button id="tab-btn-emp" class="tab-btn active" type="button" onclick="setLoginTab('emp')">
+          Employee (OTP)
         </button>
-      </form>
+        <button id="tab-btn-admin" class="tab-btn" type="button" onclick="setLoginTab('admin')">
+          Admin Sign In
+        </button>
+      </div>
 
-      <div class="security-note">
-        <div class="security-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 3l8 3v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3z"></path>
-            <path d="M9 12l2 2 4-4"></path>
-          </svg>
+      <!-- Employee OTP Tab -->
+      <div id="pane-emp" class="tab-pane active">
+        <form method="post" action="{{ url_for('send_otp') }}">
+          <div class="login-field">
+            <label for="emp-id">Employee ID</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <circle cx="12" cy="8" r="4"></circle>
+                  <path d="M4 21c.8-4 3.5-6 8-6s7.2 2 8 6"></path>
+                </svg>
+              </span>
+              <input id="emp-id" name="emp_id" type="text"
+                     placeholder="e.g. 4070032" autocomplete="off" required>
+            </div>
+          </div>
+
+          <button class="primary" type="submit">
+            Send Login OTP
+          </button>
+        </form>
+
+        <div class="security-note">
+          <div class="security-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3l8 3v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3z"></path>
+              <path d="M9 12l2 2 4-4"></path>
+            </svg>
+          </div>
+          <span>OTP code is sent to your registered official email or mobile.</span>
         </div>
-        <span>A one-time code will be sent to the mobile or email registered with your employee account.</span>
+      </div>
+
+      <!-- Admin Login Tab -->
+      <div id="pane-admin" class="tab-pane">
+        <form method="post" action="{{ url_for('admin_login') }}">
+          <div class="login-field">
+            <label for="admin-user">Admin Username</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </span>
+              <input id="admin-user" name="username" type="text"
+                     placeholder="e.g. admin" autocomplete="off" required>
+            </div>
+          </div>
+
+          <div class="login-field">
+            <label for="admin-pass">Password</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <input id="admin-pass" name="password" type="password"
+                     placeholder="Enter password" required>
+            </div>
+          </div>
+
+          <button class="primary" type="submit">
+            Sign In as Admin
+          </button>
+        </form>
+
+        <div class="security-note">
+          <div class="security-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <span>Default credentials: <code>admin</code> / <code>Admin@123</code></span>
+        </div>
       </div>
 
       <div class="card-footer">
@@ -506,5 +578,15 @@ body{
   </section>
 
 </div>
+
+<script>
+function setLoginTab(tab) {
+  const isEmp = tab === 'emp';
+  document.getElementById('tab-btn-emp').classList.toggle('active', isEmp);
+  document.getElementById('tab-btn-admin').classList.toggle('active', !isEmp);
+  document.getElementById('pane-emp').classList.toggle('active', isEmp);
+  document.getElementById('pane-admin').classList.toggle('active', !isEmp);
+}
+</script>
 </body>
 </html>
