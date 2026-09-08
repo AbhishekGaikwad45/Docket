@@ -3,28 +3,508 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign in - Department portal</title>
+<title>Sign in - Department Portal</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<style>
+/* =========================
+   JSW LOGIN PAGE
+   ========================= */
+:root{
+  --jsw-blue:#0756b9;
+  --jsw-dark:#102d63;
+  --jsw-red:#ed1c24;
+  --ink:#13254a;
+  --muted:#6d7f9f;
+  --line:#dce6f4;
+  --soft:#f4f8fd;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  color:var(--ink);
+  background:#f4f7fb;
+}
+
+#login-screen{
+  min-height:100vh;
+  display:flex;
+  overflow:hidden;
+  position:relative;
+  background:
+    radial-gradient(circle at 75% 18%,rgba(52,126,220,.20),transparent 28%),
+    linear-gradient(120deg,#f9fbff 0%,#eef5fd 53%,#dceafb 100%);
+}
+
+.login-left{
+  width:50%;
+  min-height:100vh;
+  padding:52px 7vw 80px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.login-left:before{
+  content:"";
+  position:absolute;
+  width:650px;
+  height:650px;
+  right:-330px;
+  top:-230px;
+  border-radius:50%;
+  background:rgba(31,108,198,.08);
+}
+
+.login-left:after{
+  content:"";
+  position:absolute;
+  left:-80px;
+  bottom:-190px;
+  width:760px;
+  height:330px;
+  border-radius:50% 50% 0 0;
+  background:linear-gradient(145deg,#0756b9 0 60%,#ed1c24 61% 65%,#dbe8f8 66%);
+  transform:rotate(-8deg);
+}
+
+.jsw-brand{
+  position:absolute;
+  top:48px;
+  left:7vw;
+  z-index:2;
+}
+
+.jsw-logo{
+  width:150px;
+  height:auto;
+  display:block;
+}
+
+.logo-jsw{
+  font-size:52px;
+  font-weight:900;
+  font-style:italic;
+  letter-spacing:-6px;
+  fill:#0756b9;
+}
+
+.logo-mark{
+  fill:#ed1c24;
+}
+
+.logo-tag{
+  fill:#ed1c24;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:.3px;
+}
+
+.hero-copy{
+  position:relative;
+  z-index:2;
+  max-width:520px;
+  margin-top:90px;
+}
+
+.hero-line{
+  width:68px;
+  height:5px;
+  border-radius:4px;
+  background:linear-gradient(90deg,var(--jsw-blue) 0 70%,var(--jsw-red) 70%);
+  margin-bottom:26px;
+}
+
+.hero-copy h1{
+  margin:0;
+  font-size:clamp(42px,4.2vw,68px);
+  line-height:1.02;
+  letter-spacing:-2.5px;
+  color:#12285b;
+}
+
+.hero-copy h1 span{
+  color:#1765c4;
+}
+
+.hero-copy p{
+  margin:28px 0 0;
+  max-width:470px;
+  font-size:17px;
+  line-height:1.7;
+  color:#667b9c;
+}
+
+.values{
+  margin-top:28px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:0;
+  font-size:12px;
+  letter-spacing:2.2px;
+  font-weight:700;
+  color:#617596;
+}
+
+.values span{
+  padding:0 15px;
+  border-right:1px solid #b9c8dd;
+}
+
+.values span:first-child{padding-left:0}
+.values span:last-child{border:0}
+
+.login-right{
+  width:50%;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:45px 6vw 45px 3vw;
+  position:relative;
+  background:
+    linear-gradient(145deg,rgba(8,48,103,.94),rgba(5,72,145,.72)),
+    radial-gradient(circle at 70% 55%,#3e94e8,#062d61 70%);
+}
+
+.login-right:before,
+.login-right:after{
+  content:"";
+  position:absolute;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.login-right:before{
+  width:620px;height:620px;
+  right:-300px;top:-170px;
+}
+
+.login-right:after{
+  width:430px;height:430px;
+  left:-230px;bottom:-210px;
+}
+
+.port-graphic{
+  position:absolute;
+  inset:0;
+  opacity:.24;
+  overflow:hidden;
+}
+
+.crane{
+  position:absolute;
+  right:9%;
+  bottom:14%;
+  width:430px;
+  height:300px;
+}
+
+.crane .tower{
+  position:absolute;
+  right:80px;
+  bottom:0;
+  width:24px;
+  height:260px;
+  background:#d9e7f7;
+  transform:skew(-4deg);
+}
+
+.crane .arm{
+  position:absolute;
+  right:0;
+  bottom:245px;
+  width:430px;
+  height:12px;
+  background:#e7f0fb;
+  transform:rotate(-4deg);
+  transform-origin:right center;
+}
+
+.crane .cable{
+  position:absolute;
+  right:42px;
+  bottom:5px;
+  width:2px;
+  height:250px;
+  background:#e7f0fb;
+  transform:rotate(11deg);
+}
+
+.water{
+  position:absolute;
+  left:-10%;
+  right:-10%;
+  bottom:0;
+  height:25%;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(255,255,255,.10) 0 2px,
+    transparent 2px 12px
+  );
+}
+
+.login-card{
+  width:min(470px,100%);
+  position:relative;
+  z-index:3;
+  padding:42px 44px 34px;
+  border-radius:24px;
+  background:rgba(255,255,255,.98);
+  box-shadow:0 28px 70px rgba(0,22,61,.30);
+  border:1px solid rgba(255,255,255,.8);
+}
+
+.card-logo{
+  width:74px;
+  height:74px;
+  margin:0 auto 20px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#edf5ff;
+}
+
+.card-logo img{width:62px; height:62px; object-fit:contain; display:block;}
+
+.login-card h2{
+  margin:0;
+  text-align:center;
+  font-size:30px;
+  letter-spacing:-.7px;
+  color:#12295b;
+}
+
+.login-sub{
+  margin:9px 0 30px;
+  text-align:center;
+  color:#7183a1;
+  font-size:15px;
+}
+
+.login-error{
+  padding:11px 13px;
+  border-radius:10px;
+  background:#fff0f1;
+  color:#c51d2a;
+  border:1px solid #ffd0d4;
+  font-size:13px;
+}
+
+.login-field{margin-bottom:18px}
+
+.login-field label{
+  display:block;
+  margin-bottom:8px;
+  font-size:14px;
+  font-weight:700;
+  color:#34496d;
+}
+
+.input-wrap{position:relative}
+
+.input-icon{
+  position:absolute;
+  left:15px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#7890b3;
+  pointer-events:none;
+}
+
+.login-field input{
+  width:100%;
+  height:56px;
+  border:1px solid #cfdced;
+  border-radius:12px;
+  padding:0 16px 0 45px;
+  font-size:15px;
+  color:#152b54;
+  background:#fbfdff;
+  outline:none;
+  transition:.2s ease;
+}
+
+.login-field input:focus{
+  border-color:#1768c9;
+  box-shadow:0 0 0 4px rgba(23,104,201,.12);
+  background:white;
+}
+
+.primary{
+  width:100%;
+  height:56px;
+  border:0;
+  border-radius:12px;
+  cursor:pointer;
+  color:white;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:.1px;
+  background:#0756B9 !important;
+   background-image:linear-gradient(135deg,#0756B9,#0B6BD5) !important;
+  box-shadow:0 10px 22px rgba(7,86,185,.28) !important;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+
+.primary:hover{
+  transform:translateY(-1px);
+  box-shadow:0 14px 28px rgba(7,86,185,.35) !important;
+}
+
+.primary:active{transform:translateY(0)}
+
+.security-note{
+  display:flex;
+  gap:11px;
+  align-items:flex-start;
+  margin-top:18px;
+  padding:14px;
+  border-radius:12px;
+  background:#f1f7ff;
+  color:#647999;
+  font-size:13px;
+  line-height:1.5;
+}
+
+.security-icon{
+  flex:0 0 30px;
+  width:30px;
+  height:30px;
+  border-radius:9px;
+  display:grid;
+  place-items:center;
+  color:#0a69ce;
+  background:#dceeff;
+}
+
+.card-footer{
+  margin-top:26px;
+  padding-top:19px;
+  border-top:1px solid #e3eaf4;
+  text-align:center;
+  color:#8a9ab3;
+  font-size:12px;
+  letter-spacing:.8px;
+}
+
+@media(max-width:900px){
+  #login-screen{display:block}
+  .login-left,.login-right{width:100%;min-height:auto}
+  .login-left{padding:125px 30px 90px}
+  .login-right{padding:45px 22px 65px;min-height:650px}
+  .jsw-brand{left:30px}
+  .hero-copy{margin-top:40px}
+  .hero-copy h1{font-size:48px}
+  .crane{opacity:.5;right:-80px}
+}
+
+@media(max-width:520px){
+  .login-left{padding:120px 24px 70px}
+  .login-right{padding:30px 16px 50px}
+  .login-card{padding:32px 24px 28px;border-radius:18px}
+  .login-card h2{font-size:26px}
+  .hero-copy h1{font-size:40px}
+  .values{line-height:2.3}
+  .values span{padding:0 9px}
+}
+</style>
 </head>
+
 <body>
 <div id="login-screen">
-  <div class="login-card">
-    <p class="login-brand">Department portal</p>
-    <p class="login-sub">Sign in with your employee ID</p>
 
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}<p class="login-error" style="display:block">{{ messages[0] }}</p>{% endif %}
-    {% endwith %}
+  <section class="login-left">
+    <div class="jsw-brand" aria-label="JSW">
+      <img class="jsw-logo"
+           src="{{ url_for('static', filename='img/logo31.png') }}"
+           alt="JSW Logo">
+    </div>
 
-    <form method="post" action="{{ url_for('send_otp') }}">
-      <div class="login-field">
-        <label for="emp-id">Employee ID</label>
-        <input id="emp-id" name="emp_id" type="text" placeholder="e.g. EMP1042" autocomplete="off">
+    <div class="hero-copy">
+      <div class="hero-line"></div>
+      <h1>Building<br><span>A Stronger</span><br>Tomorrow</h1>
+
+      <div class="values">
+        <span>PEOPLE</span>
+        <span>PERFORMANCE</span>
+        <span>PROGRESS</span>
       </div>
-      <button class="primary" style="width:100%" type="submit">Send OTP</button>
-    </form>
-    <p class="login-note">A one-time code will be sent to the mobile or email on record.</p>
-  </div>
+
+      <p>
+        Empowering a sustainable future through innovation,
+        collaboration and excellence.
+      </p>
+    </div>
+  </section>
+
+  <section class="login-right">
+    <div class="port-graphic" aria-hidden="true">
+      <div class="crane">
+        <div class="tower"></div>
+        <div class="arm"></div>
+        <div class="cable"></div>
+      </div>
+      <div class="water"></div>
+    </div>
+
+    <div class="login-card">
+      <div class="card-logo">
+        <img src="{{ url_for('static', filename='img/logo31.png') }}"
+             alt="JSW Logo">
+      </div>
+
+      <h2>Department Portal</h2>
+      <p class="login-sub">Sign in securely with your employee ID</p>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <p class="login-error">{{ messages[0] }}</p>
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" action="{{ url_for('send_otp') }}">
+        <div class="login-field">
+          <label for="emp-id">Employee ID</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M4 21c.8-4 3.5-6 8-6s7.2 2 8 6"></path>
+              </svg>
+            </span>
+            <input id="emp-id" name="emp_id" type="text"
+                   placeholder="e.g. EMP1042" autocomplete="off" required>
+          </div>
+        </div>
+
+        <button class="primary" type="submit">
+          Send OTP
+        </button>
+      </form>
+
+      <div class="security-note">
+        <div class="security-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3l8 3v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3z"></path>
+            <path d="M9 12l2 2 4-4"></path>
+          </svg>
+        </div>
+        <span>A one-time code will be sent to the mobile or email registered with your employee account.</span>
+      </div>
+
+      <div class="card-footer">
+        SECURE &nbsp;|&nbsp; RELIABLE &nbsp;|&nbsp; EMPLOYEE FIRST
+      </div>
+    </div>
+  </section>
+
 </div>
 </body>
 </html>

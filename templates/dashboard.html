@@ -1,13 +1,51 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% set active = 'dashboard' %}
+
 {% block content %}
-<p class="page-title">Dashboard</p>
-<p class="page-sub">Select a department to view its forms.</p>
-<div class="tile-grid">
-  <a class="tile" href="{{ url_for('department_placeholder', name='hr') }}"><p class="tile-name">HR</p><p class="tile-meta">Leave, reimbursement</p></a>
-  <a class="tile" href="{{ url_for('admin_module') }}"><p class="tile-name">Admin</p><p class="tile-meta">Guest house, visitors</p></a>
-  <a class="tile" href="{{ url_for('department_placeholder', name='it') }}"><p class="tile-name">IT</p><p class="tile-meta">Support tickets</p></a>
-  <a class="tile" href="{{ url_for('department_placeholder', name='finance') }}"><p class="tile-name">Finance</p><p class="tile-meta">Reimbursements</p></a>
+
+<div class="dashboard-hero">
+  <div class="dashboard-hero-inner">
+    <p class="dashboard-kicker">JSW DHARAMTAR PORT • EMPLOYEE SERVICES</p>
+    <h1>Welcome to your Department Portal</h1>
+    <p>
+      Access department forms, submit requests and track approvals
+      from one simple workspace.
+    </p>
+  </div>
 </div>
+
+<div class="section-heading">
+  <h2>Departments</h2>
+  <span>Select a department to continue</span>
+</div>
+
+<div class="tile-grid">
+
+  <a class="tile" href="{{ url_for('department_placeholder', name='hr') }}">
+    <div class="tile-icon">HR</div>
+    <p class="tile-name">Human Resources</p>
+    <p class="tile-meta">Leave, reimbursement & employee services</p>
+  </a>
+
+  <a class="tile" href="{{ url_for('admin_module') }}">
+    <div class="tile-icon">AD</div>
+    <p class="tile-name">Administration</p>
+    <p class="tile-meta">Guest house, visitors & facility requests</p>
+  </a>
+
+  <a class="tile" href="{{ url_for('department_placeholder', name='it') }}">
+    <div class="tile-icon">IT</div>
+    <p class="tile-name">Information Technology</p>
+    <p class="tile-meta">Support tickets & technology assistance</p>
+  </a>
+
+  <a class="tile" href="{{ url_for('department_placeholder', name='finance') }}">
+    <div class="tile-icon">₹</div>
+    <p class="tile-name">Finance</p>
+    <p class="tile-meta">Reimbursements & finance services</p>
+  </a>
+
+</div>
+
 {% endblock %}

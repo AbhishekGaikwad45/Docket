@@ -1,49 +1,569 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}Department portal{% endblock %}</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Department Portal{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <style>
+    :root{
+      --jsw-blue:#0756b9;
+      --jsw-blue-2:#0b6bd5;
+      --jsw-navy:#102d63;
+      --jsw-red:#ed1c24;
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --text:#172a4d;
+      --muted:#70819e;
+      --border:#dce5f0;
+      --sidebar:248px;
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+    }
+
+    #app-shell{
+      min-height:100vh;
+      display:flex;
+    }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar{
+      width:var(--sidebar);
+      min-height:100vh;
+      position:fixed;
+      left:0;
+      top:0;
+      bottom:0;
+      z-index:20;
+      padding:25px 14px;
+      background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);
+      border-right:1px solid var(--border);
+      box-shadow:4px 0 24px rgba(20,49,91,.04);
+    }
+
+    .sidebar-brand{
+      margin:0 10px 26px;
+      padding:0 0 22px;
+      border-bottom:1px solid #e8eef6;
+    }
+
+    .sidebar-logo{
+      width:150px;
+      height:58px;
+      object-fit:contain;
+      object-position:left center;
+      display:block;
+    }
+
+    .sidebar-portal{
+      margin:7px 0 0;
+      font-size:11px;
+      font-weight:700;
+      color:#7b8da9;
+      letter-spacing:1.5px;
+      text-transform:uppercase;
+    }
+
+    .nav-item{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      height:48px;
+      margin:5px 0;
+      padding:0 14px;
+      border-radius:12px;
+      text-decoration:none;
+      color:#536783;
+      font-size:14px;
+      font-weight:600;
+      transition:.18s ease;
+    }
+
+    .nav-item:hover{
+      color:var(--jsw-blue);
+      background:#eef5fd;
+      transform:translateX(2px);
+    }
+
+    .nav-item.active{
+      color:#0756b9;
+      background:linear-gradient(90deg,#e4f0fc,#edf6ff);
+      box-shadow:inset 3px 0 0 var(--jsw-blue);
+    }
+
+    .nav-dot{
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:#b4c0d0;
+      flex:0 0 8px;
+    }
+
+    .nav-item.active .nav-dot{
+      background:var(--jsw-red);
+      box-shadow:0 0 0 4px rgba(237,28,36,.09);
+    }
+
+    /* ---------- Main ---------- */
+    .main{
+      width:calc(100% - var(--sidebar));
+      margin-left:var(--sidebar);
+      min-height:100vh;
+    }
+
+    .topbar{
+      height:76px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 34px;
+      background:rgba(255,255,255,.96);
+      border-bottom:1px solid var(--border);
+      position:sticky;
+      top:0;
+      z-index:10;
+      box-shadow:0 3px 15px rgba(20,49,91,.035);
+    }
+
+    .topbar-greeting{
+      font-size:16px;
+      font-weight:700;
+      color:#152a50;
+    }
+
+    .role-switch{
+      display:flex;
+      align-items:center;
+      gap:9px;
+      color:#73829b;
+      font-size:13px;
+      font-weight:600;
+    }
+
+    .role-switch select{
+      min-width:145px;
+      border:1px solid #d1ddea;
+      border-radius:10px;
+      background:#fff;
+      color:#233b62;
+      font-size:14px;
+      outline:none;
+    }
+
+    .avatar{
+      width:38px;
+      height:38px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background:#eaf2f0;
+      color:#1e6a59;
+      font-size:12px;
+      font-weight:800;
+      border:1px solid #d6e9e3;
+    }
+
+    .ghost-link{
+      color:#60728e;
+      text-decoration:none;
+      font-size:13px;
+      font-weight:600;
+    }
+
+    .ghost-link:hover{color:var(--jsw-blue)}
+
+    .content{
+      max-width:1320px;
+      padding:36px 34px 55px;
+      margin:0 auto;
+    }
+
+    .page-title{
+      margin:0;
+      font-size:28px;
+      line-height:1.15;
+      font-weight:800;
+      letter-spacing:-.6px;
+      color:#142b58;
+    }
+
+    .page-sub{
+      margin:8px 0 26px;
+      color:#71829d;
+      font-size:14px;
+    }
+
+    .flash-note{
+      margin:0 0 20px;
+      padding:13px 15px;
+      border-radius:12px;
+      color:#0756b9;
+      background:#edf6ff;
+      border:1px solid #d4e7fb;
+      font-size:13px;
+      font-weight:600;
+    }
+
+    /* ---------- Dashboard ---------- */
+    .dashboard-hero{
+      position:relative;
+      overflow:hidden;
+      min-height:205px;
+      margin-bottom:25px;
+      padding:30px 34px;
+      border-radius:20px;
+      color:#fff;
+      background:
+        radial-gradient(circle at 90% 15%,rgba(255,255,255,.20),transparent 25%),
+        linear-gradient(125deg,#102d63 0%,#0756b9 65%,#1878dc 100%);
+      box-shadow:0 15px 35px rgba(7,65,140,.18);
+    }
+
+    .dashboard-hero:before{
+      content:"";
+      position:absolute;
+      width:330px;
+      height:330px;
+      right:-120px;
+      bottom:-210px;
+      border-radius:50%;
+      border:45px solid rgba(255,255,255,.08);
+    }
+
+    .dashboard-hero:after{
+      content:"";
+      position:absolute;
+      right:34%;
+      bottom:-2px;
+      width:110px;
+      height:4px;
+      background:var(--jsw-red);
+      border-radius:5px;
+      box-shadow:125px 0 0 rgba(255,255,255,.5);
+    }
+
+    .dashboard-hero-inner{
+      position:relative;
+      z-index:2;
+      max-width:720px;
+    }
+
+    .dashboard-kicker{
+      margin:0 0 10px;
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:2px;
+      opacity:.78;
+    }
+
+    .dashboard-hero h1{
+      margin:0;
+      font-size:32px;
+      letter-spacing:-1px;
+    }
+
+    .dashboard-hero p{
+      margin:10px 0 0;
+      color:rgba(255,255,255,.78);
+      font-size:14px;
+      line-height:1.6;
+    }
+
+    .section-heading{
+      display:flex;
+      align-items:end;
+      justify-content:space-between;
+      margin:30px 0 14px;
+    }
+
+    .section-heading h2{
+      margin:0;
+      font-size:18px;
+      color:#17315f;
+    }
+
+    .section-heading span{
+      color:#8796ad;
+      font-size:12px;
+    }
+
+    .tile-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:18px;
+    }
+
+    .tile{
+      position:relative;
+      min-height:155px;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-end;
+      padding:23px;
+      border:1px solid var(--border);
+      border-radius:18px;
+      background:#fff;
+      text-decoration:none;
+      box-shadow:0 7px 22px rgba(20,49,91,.05);
+      transition:.22s ease;
+    }
+
+    .tile:before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:0;
+      width:100%;
+      height:4px;
+      background:linear-gradient(90deg,var(--jsw-blue),#43a0ed);
+    }
+
+    .tile:after{
+      content:"";
+      position:absolute;
+      right:-35px;
+      top:-35px;
+      width:110px;
+      height:110px;
+      border-radius:50%;
+      background:#f1f7fe;
+    }
+
+    .tile:hover{
+      transform:translateY(-5px);
+      border-color:#bcd6f2;
+      box-shadow:0 15px 35px rgba(20,49,91,.11);
+    }
+
+    .tile-icon{
+      position:absolute;
+      top:21px;
+      left:22px;
+      width:42px;
+      height:42px;
+      display:grid;
+      place-items:center;
+      border-radius:12px;
+      background:#edf5fe;
+      color:var(--jsw-blue);
+      font-size:18px;
+      font-weight:800;
+      z-index:2;
+    }
+
+    .tile-name{
+      margin:0 0 6px;
+      color:#142b58;
+      font-size:17px;
+      font-weight:800;
+    }
+
+    .tile-meta{
+      margin:0;
+      color:#7788a3;
+      font-size:12px;
+    }
+
+    /* ---------- Generic cards/tables ---------- */
+    .card{
+      margin-bottom:22px;
+      padding:24px;
+      border:1px solid var(--border);
+      border-radius:18px;
+      background:#fff;
+      box-shadow:0 7px 22px rgba(20,49,91,.045);
+    }
+
+    .card-title{
+      margin:0 0 18px;
+      font-size:16px;
+      font-weight:800;
+      color:#17315f;
+    }
+
+    input,textarea,select{
+      border:1px solid #cfdaea;
+      border-radius:10px;
+      background:#fbfdff;
+      color:#1d345a;
+      outline:none;
+    }
+
+    input:focus,textarea:focus,select:focus{
+      border-color:#2371c7;
+      box-shadow:0 0 0 3px rgba(35,113,199,.10);
+    }
+
+    button.primary{
+      background:linear-gradient(135deg,var(--jsw-blue),var(--jsw-blue-2));
+      border:0;
+      border-radius:10px;
+      color:#fff;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      overflow:hidden;
+      border:1px solid var(--border);
+      border-radius:12px;
+    }
+
+    th{
+      background:#f3f7fc;
+      color:#566b89;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+    }
+
+    td,th{
+      padding:12px 14px;
+      border-bottom:1px solid #e8eef5;
+      text-align:left;
+    }
+
+    tr:last-child td{border-bottom:0}
+
+    .status-pill{
+      display:inline-flex;
+      padding:5px 9px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:800;
+    }
+
+    .status-approved{background:#e7f7ee;color:#177347}
+    .status-rejected{background:#fff0f1;color:#c21e2b}
+    .status-pending{background:#fff7df;color:#936d05}
+
+    .empty{
+      color:#8796aa;
+      text-align:center;
+      padding:28px;
+      margin:0;
+    }
+
+    @media(max-width:1050px){
+      .tile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+
+    @media(max-width:760px){
+      :root{--sidebar:0px}
+      .sidebar{
+        position:relative;
+        width:100%;
+        min-height:auto;
+        padding:14px;
+      }
+      #app-shell{display:block}
+      .sidebar-brand{margin-bottom:12px}
+      .sidebar-logo{width:125px;height:45px}
+      .nav-item{display:inline-flex;width:auto;margin-right:3px}
+      .main{width:100%;margin-left:0}
+      .topbar{
+        height:auto;
+        min-height:68px;
+        padding:13px 18px;
+        gap:12px;
+        flex-wrap:wrap;
+      }
+      .content{padding:24px 18px 40px}
+      .dashboard-hero{padding:25px}
+      .tile-grid{grid-template-columns:1fr}
+      .role-switch{display:none}
+    }
+  </style>
+
+  {% block head %}{% endblock %}
 </head>
+
 <body>
 <div id="app-shell">
-  <div class="sidebar">
-    <p class="sidebar-brand">Department portal</p>
-    <a class="nav-item {% if active=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><span class="nav-dot"></span>Dashboard</a>
-    <a class="nav-item {% if active=='hr' %}active{% endif %}" href="{{ url_for('department_placeholder', name='hr') }}"><span class="nav-dot"></span>HR</a>
-    <a class="nav-item {% if active=='admin' %}active{% endif %}" href="{{ url_for('admin_module') }}"><span class="nav-dot"></span>Admin</a>
-    <a class="nav-item {% if active=='it' %}active{% endif %}" href="{{ url_for('department_placeholder', name='it') }}"><span class="nav-dot"></span>IT</a>
-    <a class="nav-item {% if active=='finance' %}active{% endif %}" href="{{ url_for('department_placeholder', name='finance') }}"><span class="nav-dot"></span>Finance</a>
-    <a class="nav-item {% if active=='approvals' %}active{% endif %}" href="{{ url_for('approvals') }}"><span class="nav-dot"></span>My approvals</a>
-  </div>
 
-  <div class="main">
-    <div class="topbar">
-      <span class="topbar-greeting">Welcome, {{ session.get('emp_id', 'Employee') }}</span>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img class="sidebar-logo"
+           src="{{ url_for('static', filename='img/logo31.png') }}"
+           alt="JSW Dharamtar Port">
+      <p class="sidebar-portal">Department Portal</p>
+    </div>
+
+    <a class="nav-item {% if active=='dashboard' %}active{% endif %}"
+       href="{{ url_for('dashboard') }}">
+      <span class="nav-dot"></span>Dashboard
+    </a>
+
+    <a class="nav-item {% if active=='hr' %}active{% endif %}"
+       href="{{ url_for('department_placeholder', name='hr') }}">
+      <span class="nav-dot"></span>HR
+    </a>
+
+    <a class="nav-item {% if active=='admin' %}active{% endif %}"
+       href="{{ url_for('admin_module') }}">
+      <span class="nav-dot"></span>Admin
+    </a>
+
+    <a class="nav-item {% if active=='it' %}active{% endif %}"
+       href="{{ url_for('department_placeholder', name='it') }}">
+      <span class="nav-dot"></span>IT
+    </a>
+
+    <a class="nav-item {% if active=='finance' %}active{% endif %}"
+       href="{{ url_for('department_placeholder', name='finance') }}">
+      <span class="nav-dot"></span>Finance
+    </a>
+
+    <a class="nav-item {% if active=='approvals' %}active{% endif %}"
+       href="{{ url_for('approvals') }}">
+      <span class="nav-dot"></span>My approvals
+    </a>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <span class="topbar-greeting">
+        Welcome, {{ session.get('emp_id', 'Employee') }}
+      </span>
+
       <div style="display:flex;align-items:center;gap:16px">
         <form class="role-switch" method="post" action="{{ url_for('set_role') }}">
-          View as
-          <select name="role" onchange="this.form.submit()" style="width:auto;padding:6px 8px">
+          <span>View as</span>
+          <select name="role" onchange="this.form.submit()">
             <option value="employee" {% if session.get('role')=='employee' %}selected{% endif %}>Employee</option>
             <option value="dept_head" {% if session.get('role')=='dept_head' %}selected{% endif %}>Department head</option>
             <option value="unit_head" {% if session.get('role')=='unit_head' %}selected{% endif %}>Unit head</option>
           </select>
         </form>
+
         <div class="avatar">{{ session.get('emp_id', 'EM')[:2]|upper }}</div>
         <a class="ghost-link" href="{{ url_for('logout') }}">Log out</a>
       </div>
-    </div>
+    </header>
 
-    <div class="content">
+    <section class="content">
       {% with messages = get_flashed_messages() %}
         {% if messages %}
           <p class="flash-note">{{ messages[0] }}</p>
         {% endif %}
       {% endwith %}
+
       {% block content %}{% endblock %}
-    </div>
-  </div>
+    </section>
+  </main>
+
 </div>
 </body>
 </html>
