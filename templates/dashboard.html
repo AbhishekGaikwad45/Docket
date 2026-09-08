@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% set active = 'dashboard' %}
+{% block content %}
+<p class="page-title">Dashboard</p>
+<p class="page-sub">Select a department to view its forms.</p>
+<div class="tile-grid">
+  <a class="tile" href="{{ url_for('department_placeholder', name='hr') }}"><p class="tile-name">HR</p><p class="tile-meta">Leave, reimbursement</p></a>
+  <a class="tile" href="{{ url_for('admin_module') }}"><p class="tile-name">Admin</p><p class="tile-meta">Guest house, visitors</p></a>
+  <a class="tile" href="{{ url_for('department_placeholder', name='it') }}"><p class="tile-name">IT</p><p class="tile-meta">Support tickets</p></a>
+  <a class="tile" href="{{ url_for('department_placeholder', name='finance') }}"><p class="tile-name">Finance</p><p class="tile-meta">Reimbursements</p></a>
+</div>
+{% endblock %}

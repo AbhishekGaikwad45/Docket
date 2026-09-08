@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in - Department portal</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-card">
+    <p class="login-brand">Department portal</p>
+    <p class="login-sub">Sign in with your employee ID</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<p class="login-error" style="display:block">{{ messages[0] }}</p>{% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('send_otp') }}">
+      <div class="login-field">
+        <label for="emp-id">Employee ID</label>
+        <input id="emp-id" name="emp_id" type="text" placeholder="e.g. EMP1042" autocomplete="off">
+      </div>
+      <button class="primary" style="width:100%" type="submit">Send OTP</button>
+    </form>
+    <p class="login-note">A one-time code will be sent to the mobile or email on record.</p>
+  </div>
+</div>
+</body>
+</html>

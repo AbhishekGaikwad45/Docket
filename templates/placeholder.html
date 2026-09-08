@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}{{ dept|capitalize }}{% endblock %}
+{% set active = dept %}
+{% block content %}
+<p class="page-title">{{ dept|upper if dept == 'hr' or dept == 'it' else dept|capitalize }}</p>
+<p class="page-sub">This department's forms go here - same pattern as Admin's guest house form.</p>
+<div class="card"><p class="empty">No forms configured yet for this module.</p></div>
+{% endblock %}

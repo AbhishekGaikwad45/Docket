@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Department portal{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div id="app-shell">
+  <div class="sidebar">
+    <p class="sidebar-brand">Department portal</p>
+    <a class="nav-item {% if active=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><span class="nav-dot"></span>Dashboard</a>
+    <a class="nav-item {% if active=='hr' %}active{% endif %}" href="{{ url_for('department_placeholder', name='hr') }}"><span class="nav-dot"></span>HR</a>
+    <a class="nav-item {% if active=='admin' %}active{% endif %}" href="{{ url_for('admin_module') }}"><span class="nav-dot"></span>Admin</a>
+    <a class="nav-item {% if active=='it' %}active{% endif %}" href="{{ url_for('department_placeholder', name='it') }}"><span class="nav-dot"></span>IT</a>
+    <a class="nav-item {% if active=='finance' %}active{% endif %}" href="{{ url_for('department_placeholder', name='finance') }}"><span class="nav-dot"></span>Finance</a>
+    <a class="nav-item {% if active=='approvals' %}active{% endif %}" href="{{ url_for('approvals') }}"><span class="nav-dot"></span>My approvals</a>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-greeting">Welcome, {{ session.get('emp_id', 'Employee') }}</span>
+      <div style="display:flex;align-items:center;gap:16px">
+        <form class="role-switch" method="post" action="{{ url_for('set_role') }}">
+          View as
+          <select name="role" onchange="this.form.submit()" style="width:auto;padding:6px 8px">
+            <option value="employee" {% if session.get('role')=='employee' %}selected{% endif %}>Employee</option>
+            <option value="dept_head" {% if session.get('role')=='dept_head' %}selected{% endif %}>Department head</option>
+            <option value="unit_head" {% if session.get('role')=='unit_head' %}selected{% endif %}>Unit head</option>
+          </select>
+        </form>
+        <div class="avatar">{{ session.get('emp_id', 'EM')[:2]|upper }}</div>
+        <a class="ghost-link" href="{{ url_for('logout') }}">Log out</a>
+      </div>
+    </div>
+
+    <div class="content">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <p class="flash-note">{{ messages[0] }}</p>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+</body>
+</html>

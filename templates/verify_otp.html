@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify OTP - Department portal</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div id="login-screen">
+  <div class="login-card">
+    <p class="login-brand">Department portal</p>
+    <p class="login-note" style="margin-bottom:14px">Code sent to the contact registered for {{ emp_id }}.</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}<p class="login-error" style="display:block">{{ messages[0] }}</p>{% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('verify_otp') }}">
+      <div class="login-field">
+        <label for="otp-code">Enter OTP</label>
+        <input id="otp-code" name="otp" type="text" maxlength="6" placeholder="6-digit code" autocomplete="off">
+      </div>
+      <button class="primary" style="width:100%" type="submit">Verify and continue</button>
+    </form>
+    <p class="login-note">Demo: any 6 digits are accepted.</p>
+  </div>
+</div>
+</body>
+</html>

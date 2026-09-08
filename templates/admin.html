@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% set active = 'admin' %}
+
+{% macro pill(stage) %}
+  {% if stage == 'approved' %}<span class="status-pill status-approved">Approved</span>
+  {% elif stage == 'rejected' %}<span class="status-pill status-rejected">Rejected</span>
+  {% elif stage == 'pending_unit_head' %}<span class="status-pill status-pending">Pending unit head</span>
+  {% else %}<span class="status-pill status-pending">Pending dept head</span>
+  {% endif %}
+{% endmacro %}
+
+{% block content %}
+<p class="page-title">Admin</p>
+<p class="page-sub">Guest house request form.</p>
+
+<div class="card">
+  <p class="card-title">New guest house request</p>
+  <form method="post" action="{{ url_for('submit_guest_house') }}">
+    <div class="form-row">
+      <div><label for="gh-guest">Guest name</label><input id="gh-guest" name="guest" type="text" placeholder="Full name"></div>
+    </div>
+    <div class="form-row">
+      <div><label for="gh-checkin">Check-in</label><input id="gh-checkin" name="checkin" type="date"></div>
+      <div><label for="gh-checkout">Check-out</label><input id="gh-checkout" name="checkout" type="date"></div>
+    </div>
+    <div class="form-row">
+      <div><label for="gh-purpose">Purpose of visit</label><input id="gh-purpose" name="purpose" type="text" placeholder="e.g. client meeting"></div>
+    </div>
+    <button class="primary" type="submit">Submit request</button>
+  </form>
+</div>
+
+<div class="card">
+  <p class="card-title">My submissions</p>
+  {% if requests %}
+  <table>
+    <thead><tr><th>ID</th><th>Guest</th><th>Dates</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for r in requests %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.guest }}</td>
+        <td>{{ r.checkin }} to {{ r.checkout }}</td>
+        <td>{{ pill(r.stage) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No requests submitted yet.</p>
+  {% endif %}
+
+  {% if latest %}
+  <p class="card-title" style="margin-top:22px">Latest request {{ latest.id }} status</p>
+  <div class="stepper">
+    <div class="step">
+      <div class="step-dot done">&#10003;</div>
+      <span class="step-label">Submitted</span>
+    </div>
+
+    {% set dept_done = latest.stage in ['pending_unit_head', 'approved', 'rejected'] and latest.rejected_at != 'dept_head' %}
+    <div class="step-line {% if dept_done %}done{% endif %}"></div>
+    <div class="step">
+      {% if latest.rejected_at == 'dept_head' %}
+        <div class="step-dot rejected">&#10005;</div>
+      {% elif dept_done %}
+        <div class="step-dot done">&#10003;</div>
+      {% else %}
+        <div class="step-dot waiting">&#8226;</div>
+      {% endif %}
+      <span class="step-label">Dept head</span>
+    </div>
+
+    {% set unit_done = latest.stage == 'approved' %}
+    <div class="step-line {% if unit_done %}done{% endif %}"></div>
+    <div class="step">
+      {% if latest.rejected_at == 'unit_head' %}
+        <div class="step-dot rejected">&#10005;</div>
+      {% elif unit_done %}
+        <div class="step-dot done">&#10003;</div>
+      {% elif latest.stage == 'pending_unit_head' %}
+        <div class="step-dot waiting">&#8226;</div>
+      {% else %}
+        <div class="step-dot waiting" style="opacity:.4">&#8226;</div>
+      {% endif %}
+      <span class="step-label">Unit head</span>
+    </div>
+
+    <div class="step-line {% if latest.stage == 'approved' %}done{% endif %}"></div>
+    <div class="step">
+      {% if latest.stage == 'approved' %}
+        <div class="step-dot done">&#10003;</div>
+      {% elif latest.stage == 'rejected' %}
+        <div class="step-dot rejected">&#10005;</div>
+      {% else %}
+        <div class="step-dot waiting" style="opacity:.4">&#8226;</div>
+      {% endif %}
+      <span class="step-label">Outcome</span>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
