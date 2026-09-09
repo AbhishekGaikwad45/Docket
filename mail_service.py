@@ -62,8 +62,6 @@ def send_email(
 
     except Exception as e:
         logger.error(f"Failed to send email to {to_email} via {server_host}: {e}")
-        # Log content anyway so OTP is visible during development
-        logger.info(f"[FAILED EMAIL FALLBACK LOG] To: {to_email} | Subject: '{subject}' | Body: {text_content or html_content}")
         return False
 
 

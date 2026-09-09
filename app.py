@@ -109,18 +109,22 @@ def send_otp():
 
         # Generate 6-digit OTP
         otp_code = f"{random.randint(100000, 999999)}"
+
+        if not emp.email_id:
+            flash("No email ID is registered for this employee. Please contact the administrator.")
+            return redirect(url_for("login"))
+
+        # Only allow verification after the message has been accepted by SMTP.
+        if not send_otp_email(emp.email_id, otp_code, emp.employee_name):
+            flash("Unable to send the OTP email. Please contact the administrator and try again.")
+            return redirect(url_for("login"))
+
         session["pending_emp_id"] = emp_id
         session["pending_emp_name"] = emp.employee_name
         session["pending_emp_email"] = emp.email_id
         session["pending_emp_dept"] = emp.department
         session["pending_otp"] = otp_code
-
-        # Dispatch via SMTP Mail Service
-        if emp.email_id:
-            send_otp_email(emp.email_id, otp_code, emp.employee_name)
-            flash(f"OTP sent to your registered email ({emp.email_id[:3]}***@...). For demo testing, you may also use code: {otp_code}")
-        else:
-            flash(f"Demo OTP code: {otp_code} (No email registered on file)")
+        flash(f"OTP sent to your registered email ({emp.email_id[:3]}***@...).")
 
     finally:
         db.close()
@@ -215,6 +219,11 @@ def department_placeholder(name):
 
 @app.route("/department/admin", methods=["GET"])
 def admin_module():
+    return render_admin_module()
+
+
+def render_admin_module(sync_result=None, sync_records=None):
+    """Render the admin page, optionally showing the latest Mantra sync rows."""
     db = SessionLocal()
     try:
         req_records = (
@@ -231,6 +240,8 @@ def admin_module():
             requests=my_requests,
             latest=latest,
             employee_count=employee_count,
+            sync_result=sync_result,
+            sync_records=sync_records or [],
         )
     finally:
         db.close()
@@ -256,7 +267,31 @@ def sync_mantra_admin():
         err_msg = ", ".join(result["errors"])
         flash(f"Mantra Sync Failed: {err_msg}")
 
-    return redirect(url_for("admin_module"))
+    # Show exactly the rows returned by Mantra for this synchronization.
+    return render_admin_module(sync_result=result, sync_records=result.get("records", []))
+
+
+@app.route("/admin/employees/<employee_id>/email", methods=["POST"])
+def update_employee_email(employee_id):
+    """Persist an email edited in the Mantra sync results table."""
+    payload = request.get_json(silent=True) or request.form
+    email_id = (payload.get("email_id") or "").strip().lower() or None
+
+    db = SessionLocal()
+    try:
+        employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+        if not employee:
+            return jsonify({"success": False, "message": "Employee not found."}), 404
+
+        employee.email_id = email_id
+        db.commit()
+        return jsonify({"success": True, "email_id": employee.email_id or ""})
+    except Exception:
+        db.rollback()
+        app.logger.exception("Unable to save employee email")
+        return jsonify({"success": False, "message": "Unable to save the email address."}), 500
+    finally:
+        db.close()
 
 
 @app.route("/department/admin/submit", methods=["POST"])

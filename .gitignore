@@ -39,6 +39,7 @@ ENV/
 # Environment Variables & Secrets
 .env
 .env.local
+env.py
 
 # Logs
 logs/*.log

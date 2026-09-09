@@ -11,45 +11,8 @@
 {% endmacro %}
 
 {% block content %}
-<p class="page-title">Admin Module</p>
-<p class="page-sub">Guest house requests & system administration.</p>
-
-<!-- Mantra Biometric & Employee Sync Control Card -->
-<div class="card" style="border-left:4px solid #0756b9;margin-bottom:24px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-    <div>
-      <p class="card-title" style="margin:0 0 4px">Mantra Employee Master Synchronization</p>
-      <p style="margin:0;font-size:13px;color:#64748b">
-        Sync employees from MS SQL Server (<code>JSW_Dharamtar</code> &middot; 172.21.30.101) into PostgreSQL.
-      </p>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <span style="background:#e0edff;color:#0756b9;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700">
-        {{ employee_count or 0 }} Employees in System
-      </span>
-    </div>
-  </div>
-
-  <form method="post" action="{{ url_for('sync_mantra_admin') }}" style="margin-top:18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #edf2f7">
-    <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
-      <input type="checkbox" name="active_only" value="true" checked style="width:16px;height:16px">
-      Sync Active employees only
-    </label>
-
-    <label style="display:flex;align-items:center;gap:8px;font-size:14px">
-      Source:
-      <select name="source" style="padding:6px 10px;border-radius:8px;border:1px solid #cbd5e1;font-size:13px">
-        <option value="both" selected>Staff & Associates</option>
-        <option value="staff">Staff Only</option>
-        <option value="associates">Associates Only</option>
-      </select>
-    </label>
-
-    <button class="primary" type="submit" style="width:auto;padding:8px 20px;height:42px;font-size:14px">
-      Sync from Mantra Now
-    </button>
-  </form>
-</div>
+<p class="page-title">Admin</p>
+<p class="page-sub">Guest house request form.</p>
 
 <div class="card">
   <p class="card-title">New guest house request</p>

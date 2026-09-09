@@ -1,8 +1,12 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env if present
+# Load a conventional .env first, then this project's existing env.py file.
+# Both files use dotenv KEY=value syntax; neither overrides real environment
+# variables supplied by the deployment environment.
 load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).with_name("env.py"))
 
 
 class Config:

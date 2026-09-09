@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 import pyodbc
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from config import Config
@@ -123,7 +124,9 @@ def upsert_employees_to_postgres(records: List[Dict[str, Any]], batch_size: int 
                     "employee_name": stmt.excluded.employee_name,
                     "designation": stmt.excluded.designation,
                     "department": stmt.excluded.department,
-                    "email_id": stmt.excluded.email_id,
+                    # Mantra may return no email. Preserve an email saved in
+                    # the portal instead of replacing it with a blank value.
+                    "email_id": func.coalesce(stmt.excluded.email_id, Employee.email_id),
                     "employee_status": stmt.excluded.employee_status,
                     "contact_no": stmt.excluded.contact_no,
                     "gender": stmt.excluded.gender,
@@ -192,6 +195,23 @@ def sync_employees(include_staff: bool = True, include_associates: bool = True, 
 
     duration = round(time.time() - start_time, 2)
 
+    # Reflect manually maintained emails in the result table too. This matters
+    # when Mantra supplies a blank email for an employee.
+    if all_records and upserted_count:
+        session = SessionLocal()
+        try:
+            employee_ids = [record["employee_id"] for record in all_records]
+            saved_emails = dict(
+                session.query(Employee.employee_id, Employee.email_id)
+                .filter(Employee.employee_id.in_(employee_ids))
+                .all()
+            )
+            for record in all_records:
+                if not record.get("email_id"):
+                    record["email_id"] = saved_emails.get(record["employee_id"])
+        finally:
+            session.close()
+
     return {
         "success": len(errors) == 0,
         "staff_fetched": staff_count,
@@ -200,4 +220,6 @@ def sync_employees(include_staff: bool = True, include_associates: bool = True, 
         "total_upserted": upserted_count,
         "duration_seconds": duration,
         "errors": errors,
+        # The admin UI uses these source rows to show the result of this run.
+        "records": all_records,
     }

@@ -493,7 +493,7 @@ body{
 
       <!-- Employee OTP Tab -->
       <div id="pane-emp" class="tab-pane active">
-        <form method="post" action="{{ url_for('send_otp') }}">
+        <form id="otp-login-form" method="post" action="{{ url_for('send_otp') }}">
           <div class="login-field">
             <label for="emp-id">Employee ID</label>
             <div class="input-wrap">
@@ -508,7 +508,7 @@ body{
             </div>
           </div>
 
-          <button class="primary" type="submit">
+          <button id="send-otp-button" class="primary" type="submit">
             Send Login OTP
           </button>
         </form>
@@ -587,6 +587,12 @@ function setLoginTab(tab) {
   document.getElementById('pane-emp').classList.toggle('active', isEmp);
   document.getElementById('pane-admin').classList.toggle('active', !isEmp);
 }
+
+document.getElementById('otp-login-form').addEventListener('submit', function() {
+  const button = document.getElementById('send-otp-button');
+  button.disabled = true;
+  button.textContent = 'Sending OTP...';
+});
 </script>
 </body>
 </html>

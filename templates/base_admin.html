@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% block title %}Dashboard
+<style>
+/* =========================================================
+   ADMINISTRATION CARD -> MANTRA SYNC POPUP
+   ========================================================= */
+
+.admin-department-tile{
+  cursor:pointer;
+}
+
+/* Dark overlay */
+.mantra-modal{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:rgba(8,30,68,.48);
+  backdrop-filter:blur(4px);
+}
+
+.mantra-modal.open{
+  display:flex;
+}
+
+/* Popup */
+.mantra-modal-box{
+  width:min(820px,100%);
+  max-height:90vh;
+  overflow:auto;
+  background:#fff;
+  border:1px solid #dce6f4;
+  border-radius:20px;
+  box-shadow:0 28px 80px rgba(0,22,61,.30);
+  animation:mantraPopupIn .18s ease-out;
+}
+
+@keyframes mantraPopupIn{
+  from{
+    opacity:0;
+    transform:translateY(12px) scale(.98);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+}
+
+.mantra-modal-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:24px 28px 20px;
+  border-bottom:1px solid #e5ecf5;
+}
+
+.mantra-modal-kicker{
+  margin:0 0 5px;
+  color:#0756B9;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:1.3px;
+  text-transform:uppercase;
+}
+
+.mantra-modal-title{
+  margin:0;
+  color:#12295B;
+  font-size:23px;
+  font-weight:800;
+}
+
+.mantra-close{
+  width:38px;
+  height:38px;
+  flex:0 0 38px;
+  border:0;
+  border-radius:10px;
+  background:#f1f6fc;
+  color:#526a8c;
+  font-size:25px;
+  line-height:1;
+  cursor:pointer;
+}
+
+.mantra-close:hover{
+  background:#e4eefb;
+  color:#0756B9;
+}
+
+.mantra-modal-body{
+  padding:26px 28px 30px;
+}
+
+.mantra-sync-card{
+  border-left:4px solid #0756B9;
+  border-radius:14px;
+  background:#f9fbff;
+  padding:24px;
+}
+
+.mantra-sync-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+}
+
+.mantra-sync-title{
+  margin:0;
+  color:#12295B;
+  font-size:18px;
+  font-weight:800;
+}
+
+.mantra-sync-subtitle{
+  margin:7px 0 0;
+  color:#64748B;
+  font-size:14px;
+  line-height:1.55;
+}
+
+.mantra-sync-subtitle code{
+  color:#30496D;
+}
+
+.mantra-count{
+  flex:0 0 auto;
+  padding:10px 16px;
+  border-radius:22px;
+  background:#E0EDFF;
+  color:#0756B9;
+  font-size:13px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.mantra-sync-form{
+  display:flex;
+  align-items:center;
+  gap:20px;
+  flex-wrap:wrap;
+  margin-top:22px;
+  padding-top:20px;
+  border-top:1px solid #E3EAF4;
+}
+
+.mantra-check,
+.mantra-source{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:#516784;
+  font-size:14px;
+}
+
+.mantra-check{
+  cursor:pointer;
+}
+
+.mantra-check input{
+  width:18px;
+  height:18px;
+  accent-color:#0756B9;
+}
+
+.mantra-source select{
+  height:44px;
+  min-width:175px;
+  padding:0 32px 0 12px;
+  border:1px solid #CBD5E1;
+  border-radius:9px;
+  background:#fff;
+  color:#30496D;
+  font-size:14px;
+  outline:none;
+}
+
+.mantra-source select:focus{
+  border-color:#0756B9;
+  box-shadow:0 0 0 3px rgba(7,86,185,.12);
+}
+
+/* Force the same JSW blue */
+.mantra-sync-button{
+  height:46px;
+  min-width:220px;
+  padding:0 22px;
+  border:1px solid #0756B9 !important;
+  border-radius:10px;
+  background:#0756B9 !important;
+  background-image:linear-gradient(135deg,#0756B9,#0B6BD5) !important;
+  color:#fff !important;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 9px 20px rgba(7,86,185,.22);
+}
+
+.mantra-sync-button:hover{
+  background:#0B6BD5 !important;
+  background-image:linear-gradient(135deg,#0756B9,#0B6BD5) !important;
+}
+
+.mantra-info{
+  margin:18px 0 0;
+  padding:13px 15px;
+  border-radius:10px;
+  background:#eef6ff;
+  color:#647999;
+  font-size:13px;
+  line-height:1.5;
+}
+
+@media(max-width:700px){
+  .mantra-modal{
+    padding:12px;
+  }
+
+  .mantra-modal-top{
+    padding:20px;
+  }
+
+  .mantra-modal-body{
+    padding:18px;
+  }
+
+  .mantra-sync-card{
+    padding:18px;
+  }
+
+  .mantra-sync-heading{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .mantra-sync-form{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .mantra-source{
+    justify-content:space-between;
+  }
+
+  .mantra-source select,
+  .mantra-sync-button{
+    width:100%;
+  }
+}
+</style>
+
+<div id="mantra-sync-modal" class="mantra-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="mantra-modal-title"
+     onclick="closeMantraSync(event)">
+
+  <div class="mantra-modal-box" onclick="event.stopPropagation()">
+
+    <div class="mantra-modal-top">
+      <div>
+        <p class="mantra-modal-kicker">Administration</p>
+        <h2 id="mantra-modal-title" class="mantra-modal-title">Mantra Employee Sync</h2>
+      </div>
+
+      <button type="button"
+              class="mantra-close"
+              onclick="closeMantraSync()"
+              aria-label="Close">&times;</button>
+    </div>
+
+    <div class="mantra-modal-body">
+
+      <div class="mantra-sync-card">
+
+        <div class="mantra-sync-heading">
+          <div>
+            <p class="mantra-sync-title">Mantra Employee Master Synchronization</p>
+            <p class="mantra-sync-subtitle">
+              Sync employees from MS SQL Server
+              (<code>JSW_Dharamtar</code> &middot; 172.21.30.101)
+              into PostgreSQL.
+            </p>
+          </div>
+
+          <span class="mantra-count">
+            {{ employee_count or 0 }} Employees in System
+          </span>
+        </div>
+
+        <form method="post"
+              action="{{ url_for('sync_mantra_admin') }}"
+              class="mantra-sync-form">
+
+          <label class="mantra-check">
+            <input type="checkbox" name="active_only" value="true" checked>
+            <span>Sync Active employees only</span>
+          </label>
+
+          <label class="mantra-source">
+            <span>Source:</span>
+            <select name="source">
+              <option value="both" selected>Staff &amp; Associates</option>
+              <option value="staff">Staff Only</option>
+              <option value="associates">Associates Only</option>
+            </select>
+          </label>
+
+          <button class="mantra-sync-button" type="submit">
+            Sync from Mantra Now
+          </button>
+        </form>
+
+        <p class="mantra-info">
+          Use this control to synchronize the employee master from Mantra
+          into the Department Portal database.
+        </p>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openMantraSync(event){
+  if(event) event.preventDefault();
+
+  const modal = document.getElementById('mantra-sync-modal');
+  if(!modal) return;
+
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  const closeButton = modal.querySelector('.mantra-close');
+  if(closeButton) closeButton.focus();
+}
+
+function closeMantraSync(event){
+  if(event && event.target !== event.currentTarget) return;
+
+  const modal = document.getElementById('mantra-sync-modal');
+  if(!modal) return;
+
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(event){
+  if(event.key === 'Escape'){
+    closeMantraSync();
+  }
+});
+</script>
+
+{% endblock %}
+{% set active = 'dashboard' %}
+
+{% block content %}
+
+<div class="dashboard-hero">
+  <div class="dashboard-hero-inner">
+    <p class="dashboard-kicker">JSW DHARAMTAR PORT • EMPLOYEE SERVICES</p>
+    <h1>Welcome to your Department Portal</h1>
+    <p>
+      Access department forms, submit requests and track approvals
+      from one simple workspace.
+    </p>
+  </div>
+</div>
+
+<div class="section-heading">
+  <h2>Departments</h2>
+  <span>Select a department to continue</span>
+</div>
+
+<div class="tile-grid">
+
+  <a class="tile" href="{{ url_for('department_placeholder', name='hr') }}">
+    <div class="tile-icon">HR</div>
+    <p class="tile-name">Human Resources</p>
+    <p class="tile-meta">Leave, reimbursement & employee services</p>
+  </a>
+
+  <a class="tile admin-department-tile"
+     href="#"
+     onclick="openMantraSync(event)"
+     aria-label="Open Administration and Mantra Employee Synchronization">
+    <div class="tile-icon">AD</div>
+    <p class="tile-name">Administration</p>
+    <p class="tile-meta">Guest house, visitors &amp; facility requests</p>
+  </a>
+
+  <a class="tile" href="{{ url_for('department_placeholder', name='it') }}">
+    <div class="tile-icon">IT</div>
+    <p class="tile-name">Information Technology</p>
+    <p class="tile-meta">Support tickets & technology assistance</p>
+  </a>
+
+  <a class="tile" href="{{ url_for('department_placeholder', name='finance') }}">
+    <div class="tile-icon">₹</div>
+    <p class="tile-name">Finance</p>
+    <p class="tile-meta">Reimbursements & finance services</p>
+  </a>
+
+</div>
+
+{% endblock %}
