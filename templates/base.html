@@ -481,6 +481,7 @@
         flex-wrap:wrap;
       }
       .content{padding:24px 18px 40px}
+      .mantra-modal{margin:0 18px 40px}
       .dashboard-hero{padding:25px}
       .tile-grid{grid-template-columns:1fr}
       .role-switch{display:none}
@@ -511,32 +512,22 @@
       box-shadow:0 6px 15px rgba(7,86,185,.15);
     }
 
-    /* ---------- Mantra Employee Sync Modal ---------- */
+    /* ---------- Administration page: Mantra Employee Sync ---------- */
     .mantra-modal{
-      position:fixed;
-      inset:0;
-      z-index:9999;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
-      background:rgba(8,30,68,.48);
-      backdrop-filter:blur(4px);
+      margin:0 36px 40px calc(var(--sidebar) + 36px);
     }
 
     .mantra-modal.open{
-      display:flex;
+      display:block;
     }
 
     .mantra-modal-box{
-      width:min(1180px,100%);
-      max-height:90vh;
-      overflow:auto;
+      width:100%;
       background:#fff;
       border:1px solid #dce6f4;
       border-radius:20px;
       box-shadow:0 28px 80px rgba(0,22,61,.30);
-      animation:mantraPopupIn .18s ease-out;
+      animation:none;
     }
 
     @keyframes mantraPopupIn{
@@ -873,35 +864,37 @@
       <p class="sidebar-portal">Department Portal</p>
     </div>
 
-    <a class="nav-item {% if active=='dashboard' %}active{% endif %}"
-       href="{{ url_for('dashboard') }}">
-      <span class="nav-dot"></span>Dashboard
-    </a>
+    {% if session.get('is_admin') %}
+      <a class="nav-item {% if active=='admin' %}active{% endif %}"
+         href="{{ url_for('admin_module') }}">
+        <span class="nav-dot"></span>Administration
+      </a>
+    {% else %}
+      <a class="nav-item {% if active=='dashboard' %}active{% endif %}"
+         href="{{ url_for('dashboard') }}">
+        <span class="nav-dot"></span>Dashboard
+      </a>
+    {% endif %}
 
-    <a class="nav-item {% if active=='hr' %}active{% endif %}"
+    <!-- <a class="nav-item {% if active=='hr' %}active{% endif %}"
        href="{{ url_for('department_placeholder', name='hr') }}">
       <span class="nav-dot"></span>HR
-    </a>
+    </a> -->
 
-    <a class="nav-item {% if active=='admin' %}active{% endif %}"
-       href="{{ url_for('admin_module') }}">
-      <span class="nav-dot"></span>Admin
-    </a>
-
-    <a class="nav-item {% if active=='it' %}active{% endif %}"
+    <!-- <a class="nav-item {% if active=='it' %}active{% endif %}"
        href="{{ url_for('department_placeholder', name='it') }}">
       <span class="nav-dot"></span>IT
-    </a>
+    </a> -->
 
-    <a class="nav-item {% if active=='finance' %}active{% endif %}"
+    <!-- <a class="nav-item {% if active=='finance' %}active{% endif %}"
        href="{{ url_for('department_placeholder', name='finance') }}">
       <span class="nav-dot"></span>Finance
-    </a>
+    </a> -->
 
-    <a class="nav-item {% if active=='approvals' %}active{% endif %}"
+    <!-- <a class="nav-item {% if active=='approvals' %}active{% endif %}"
        href="{{ url_for('approvals') }}">
       <span class="nav-dot"></span>My approvals
-    </a>
+    </a> -->
   </aside>
 
   <main class="main">
@@ -911,23 +904,24 @@
       </span>
 
       <div style="display:flex;align-items:center;gap:16px">
-        <form class="role-switch" method="post" action="{{ url_for('set_role') }}">
-          <span>View as</span>
-          <select name="role" onchange="this.form.submit()">
-            <option value="employee" {% if session.get('role')=='employee' %}selected{% endif %}>Employee</option>
-            <option value="dept_head" {% if session.get('role')=='dept_head' %}selected{% endif %}>Department head</option>
-            <option value="unit_head" {% if session.get('role')=='unit_head' %}selected{% endif %}>Unit head</option>
-          </select>
-        </form>
+        {% if not session.get('is_admin') %}
+          <form class="role-switch" method="post" action="{{ url_for('set_role') }}">
+            <span>View as</span>
+            <select name="role" onchange="this.form.submit()">
+              <option value="employee" {% if session.get('role')=='employee' %}selected{% endif %}>Employee</option>
+              <option value="dept_head" {% if session.get('role')=='dept_head' %}selected{% endif %}>Department head</option>
+              <option value="unit_head" {% if session.get('role')=='unit_head' %}selected{% endif %}>Unit head</option>
+            </select>
+          </form>
+        {% endif %}
 
-        {% if session.get('emp_id', '')|lower == 'admin' %}
-          <button type="button"
-                  class="admin-avatar"
-                  onclick="openMantraSync()"
-                  title="Admin Controls"
-                  aria-label="Open Admin Controls">
+        {% if session.get('is_admin') %}
+          <a class="admin-avatar"
+             href="{{ url_for('admin_module') }}"
+             title="Open Admin Panel"
+             aria-label="Open Admin Panel">
             AD
-          </button>
+          </a>
         {% else %}
           <div class="avatar">{{ session.get('emp_id', 'EM')[:2]|upper }}</div>
         {% endif %}
@@ -949,16 +943,13 @@
 
 </div>
 
-  <!-- Admin-only Mantra Employee Synchronization -->
-  {% if session.get('emp_id', '')|lower == 'admin' %}
-  <div id="mantra-sync-modal"
+  <!-- Administration controls are available only on the dedicated Admin page. -->
+  {% if false %}
+  <section id="mantra-sync-modal"
        class="mantra-modal"
-       role="dialog"
-       aria-modal="true"
-       aria-labelledby="mantra-modal-title"
-       onclick="closeMantraSync(event)">
+       aria-labelledby="mantra-modal-title">
 
-    <div class="mantra-modal-box" onclick="event.stopPropagation()">
+    <div class="mantra-modal-box">
 
       <div class="mantra-modal-top">
         <div>
@@ -968,10 +959,6 @@
           </h2>
         </div>
 
-        <button type="button"
-                class="mantra-close"
-                onclick="closeMantraSync()"
-                aria-label="Close">&times;</button>
       </div>
 
       <div class="mantra-modal-body">
@@ -1080,55 +1067,10 @@
       </div>
 
     </div>
-  </div>
+  </section>
 
   <script>
-   function openMantraSync() {
-      const modal = document.getElementById('mantra-sync-modal');
-
-      if (!modal) {
-        return;
-      }
-
-      modal.classList.add('open');
-      document.body.style.overflow = 'hidden';
-
-      const closeButton = modal.querySelector('.mantra-close');
-
-      if (closeButton) {
-        closeButton.focus();
-      }
-    }
-
-    function closeMantraSync(event) {
-      if (event && event.target !== event.currentTarget) {
-        return;
-      }
-
-      const modal = document.getElementById('mantra-sync-modal');
-
-      if (!modal) {
-        return;
-      }
-
-      modal.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-
-    document.addEventListener('keydown', function(event) {
-      if (event.key === 'Escape') {
-        closeMantraSync();
-      }
-    });
-
     document.addEventListener('DOMContentLoaded', function() {
-      const syncResultExists =
-        {{ 'true' if sync_result is defined and sync_result is not none else 'false' }};
-
-      if (syncResultExists) {
-        openMantraSync();
-      }
-
       document.querySelectorAll('.mantra-email-editor').forEach(function(editor) {
         const input = editor.querySelector('.mantra-email-input');
         const button = editor.querySelector('.mantra-email-save');
@@ -1166,6 +1108,8 @@
     });
   </script>
   {% endif %}
+
+  {% block scripts %}{% endblock %}
 
 </body>
 </html>

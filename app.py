@@ -31,6 +31,17 @@ def next_id():
         db.close()
 
 
+def require_admin(view):
+    """Restrict Administration controls to authenticated administrators."""
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if not session.get("is_admin"):
+            flash("Admin access is required to open the Administration panel.")
+            return redirect(url_for("dashboard"))
+        return view(*args, **kwargs)
+    return wrapped_view
+
+
 @app.before_request
 def require_login():
     open_endpoints = {
@@ -207,6 +218,8 @@ def set_role():
 # ---------------------------------------------------------------------------
 @app.route("/dashboard")
 def dashboard():
+    if session.get("is_admin"):
+        return redirect(url_for("admin_module"))
     return render_template("dashboard.html")
 
 
@@ -218,6 +231,7 @@ def department_placeholder(name):
 
 
 @app.route("/department/admin", methods=["GET"])
+@require_admin
 def admin_module():
     return render_admin_module()
 
@@ -248,6 +262,7 @@ def render_admin_module(sync_result=None, sync_records=None):
 
 
 @app.route("/admin/sync-mantra", methods=["POST"])
+@require_admin
 def sync_mantra_admin():
     active_only = request.form.get("active_only") == "true"
     source = request.form.get("source", "both")
@@ -272,6 +287,7 @@ def sync_mantra_admin():
 
 
 @app.route("/admin/employees/<employee_id>/email", methods=["POST"])
+@require_admin
 def update_employee_email(employee_id):
     """Persist an email edited in the Mantra sync results table."""
     payload = request.get_json(silent=True) or request.form
@@ -295,6 +311,7 @@ def update_employee_email(employee_id):
 
 
 @app.route("/department/admin/submit", methods=["POST"])
+@require_admin
 def submit_guest_house():
     guest = request.form.get("guest", "").strip()
     checkin = request.form.get("checkin", "")
@@ -336,6 +353,8 @@ def submit_guest_house():
 # ---------------------------------------------------------------------------
 @app.route("/approvals")
 def approvals():
+    if session.get("is_admin"):
+        return redirect(url_for("admin_module"))
     role = session.get("role", "employee")
     stage_for_role = {
         "dept_head": "pending_dept_head",
@@ -415,4 +434,4 @@ def sync_employees_route():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=8080)

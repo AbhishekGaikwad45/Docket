@@ -2,6 +2,18 @@
 {% block title %}Admin{% endblock %}
 {% set active = 'admin' %}
 
+{% block head %}
+<style>
+  .admin-page-header{margin-bottom:24px}
+  .admin-page-header .page-title{margin-bottom:6px}
+  .admin-page-header .page-sub{margin:0;color:#64748b}
+  .admin-sync-page{margin:0!important}
+  .admin-sync-page .mantra-modal-box{box-shadow:0 12px 32px rgba(18,41,91,.09)}
+  .admin-sync-page .mantra-modal-body{padding:26px 28px 30px}
+  @media(max-width:700px){.admin-sync-page .mantra-modal-body{padding:18px}}
+</style>
+{% endblock %}
+
 {% macro pill(stage) %}
   {% if stage == 'approved' %}<span class="status-pill status-approved">Approved</span>
   {% elif stage == 'rejected' %}<span class="status-pill status-rejected">Rejected</span>
@@ -11,8 +23,82 @@
 {% endmacro %}
 
 {% block content %}
-<p class="page-title">Admin</p>
-<p class="page-sub">Guest house request form.</p>
+<div class="admin-page-header">
+  <p class="page-title">Administration</p>
+  <p class="page-sub">Manage the employee master and synchronize Mantra records.</p>
+</div>
+
+<section class="mantra-modal admin-sync-page" aria-labelledby="mantra-modal-title">
+  <div class="mantra-modal-box">
+    <div class="mantra-modal-top">
+      <div>
+        <p class="mantra-modal-kicker">Administration</p>
+        <h2 id="mantra-modal-title" class="mantra-modal-title">Mantra Employee Sync</h2>
+      </div>
+    </div>
+
+    <div class="mantra-modal-body">
+      <div class="mantra-sync-card">
+        <div class="mantra-sync-heading">
+          <div>
+            <p class="mantra-sync-title">Mantra Employee Master Synchronization</p>
+            <p class="mantra-sync-subtitle">
+              Sync employees from MS SQL Server (<code>JSW_Dharamtar</code> &middot; 172.21.30.101) into PostgreSQL.
+            </p>
+          </div>
+          <span class="mantra-count">{{ employee_count or 0 }} Employees in System</span>
+        </div>
+
+        <form method="post" action="{{ url_for('sync_mantra_admin') }}" class="mantra-sync-form">
+          <label class="mantra-check">
+            <input type="checkbox" name="active_only" value="true" checked>
+            <span>Sync active employees only</span>
+          </label>
+          <label class="mantra-source">
+            <span>Source:</span>
+            <select name="source">
+              <option value="both" selected>Staff &amp; Associates</option>
+              <option value="staff">Staff Only</option>
+              <option value="associates">Associates Only</option>
+            </select>
+          </label>
+          <button class="mantra-sync-button" type="submit">Sync from Mantra Now</button>
+        </form>
+
+        <p class="mantra-info">This sync updates the Department Portal employee master using the latest Mantra records.</p>
+
+        {% if sync_result is not none %}
+        <section class="mantra-sync-result" aria-labelledby="mantra-sync-result-title">
+          <h3 id="mantra-sync-result-title" class="mantra-sync-result-title">Synchronized employee data</h3>
+          <p class="mantra-sync-result-meta">
+            {{ sync_result.total_fetched }} employee{{ '' if sync_result.total_fetched == 1 else 's' }} fetched
+            {% if sync_result.success %}&middot; {{ sync_result.total_upserted }} saved successfully{% endif %}
+          </p>
+          {% if sync_records %}
+          <div class="mantra-sync-table-wrap">
+            <table class="mantra-sync-table">
+              <thead><tr><th>Employee ID</th><th>Employee Name</th><th>Designation</th><th>Department</th><th>Email ID</th><th>Status</th></tr></thead>
+              <tbody>
+                {% for employee in sync_records %}
+                <tr>
+                  <td>{{ employee.employee_id }}</td><td>{{ employee.employee_name }}</td><td>{{ employee.designation or '-' }}</td><td>{{ employee.department or '-' }}</td>
+                  <td><div class="mantra-email-editor" data-employee-id="{{ employee.employee_id }}"><input class="mantra-email-input" type="email" value="{{ employee.email_id or '' }}" placeholder="Enter email ID" aria-label="Email ID for {{ employee.employee_name }}"><button class="mantra-email-save" type="button">Save</button></div><span class="mantra-email-status" aria-live="polite"></span></td>
+                  <td>{{ employee.employee_status or '-' }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="mantra-sync-result-meta">No employee records were returned for the selected sync options.</p>
+          {% endif %}
+        </section>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+<!-- <p class="page-sub">Guest house request form.</p>
 
 <div class="card">
   <p class="card-title">New guest house request</p>
@@ -98,7 +184,37 @@
       {% endif %}
       <span class="step-label">Outcome</span>
     </div>
-  </div>
+  </div> -->
   {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.mantra-email-editor').forEach(function(editor) {
+  const input = editor.querySelector('.mantra-email-input');
+  const button = editor.querySelector('.mantra-email-save');
+  const status = editor.parentElement.querySelector('.mantra-email-status');
+
+  button.addEventListener('click', async function() {
+    button.disabled = true;
+    status.className = 'mantra-email-status';
+    status.textContent = 'Saving...';
+    try {
+      const response = await fetch('/admin/employees/' + encodeURIComponent(editor.dataset.employeeId) + '/email', {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email_id: input.value})
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Save failed.');
+      input.value = result.email_id;
+      status.textContent = 'Saved';
+    } catch (error) {
+      status.className = 'mantra-email-status error';
+      status.textContent = error.message || 'Could not save email.';
+    } finally {
+      button.disabled = false;
+    }
+  });
+});
+</script>
 {% endblock %}

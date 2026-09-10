@@ -22,29 +22,31 @@
 
 <div class="tile-grid">
 
-  <a class="tile" href="{{ url_for('department_placeholder', name='hr') }}">
+  <!-- <a class="tile" href="{{ url_for('department_placeholder', name='hr') }}">
     <div class="tile-icon">HR</div>
     <p class="tile-name">Human Resources</p>
     <p class="tile-meta">Leave, reimbursement & employee services</p>
-  </a>
+  </a> -->
 
-  <a class="tile" href="{{ url_for('admin_module') }}">
-    <div class="tile-icon">AD</div>
-    <p class="tile-name">Administration</p>
-    <p class="tile-meta">Guest house, visitors & facility requests</p>
-  </a>
+  {% if session.get('is_admin') %}
+    <a class="tile" href="{{ url_for('admin_module') }}">
+      <div class="tile-icon">AD</div>
+      <p class="tile-name">Administration</p>
+      <p class="tile-meta">Guest house, visitors &amp; facility requests</p>
+    </a>
+  {% endif %}
 
-  <a class="tile" href="{{ url_for('department_placeholder', name='it') }}">
+  <!-- <a class="tile" href="{{ url_for('department_placeholder', name='it') }}">
     <div class="tile-icon">IT</div>
     <p class="tile-name">Information Technology</p>
     <p class="tile-meta">Support tickets & technology assistance</p>
-  </a>
+  </a> -->
 
-  <a class="tile" href="{{ url_for('department_placeholder', name='finance') }}">
+  <!-- <a class="tile" href="{{ url_for('department_placeholder', name='finance') }}">
     <div class="tile-icon">₹</div>
     <p class="tile-name">Finance</p>
     <p class="tile-meta">Reimbursements & finance services</p>
-  </a>
+  </a> -->
 
 </div>
 
