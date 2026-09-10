@@ -7,9 +7,9 @@
 <div class="dashboard-hero">
   <div class="dashboard-hero-inner">
     <p class="dashboard-kicker">JSW DHARAMTAR PORT • EMPLOYEE SERVICES</p>
-    <h1>Welcome to your Department Portal</h1>
+    <h1>Welcome to your User Management Portal</h1>
     <p>
-      Access department forms, submit requests and track approvals
+      Access employee records, user management, and administrative services
       from one simple workspace.
     </p>
   </div>
@@ -30,9 +30,9 @@
 
   {% if session.get('is_admin') %}
     <a class="tile" href="{{ url_for('admin_module') }}">
-      <div class="tile-icon">AD</div>
-      <p class="tile-name">Administration</p>
-      <p class="tile-meta">Guest house, visitors &amp; facility requests</p>
+      <div class="tile-icon">UM</div>
+      <p class="tile-name">User Management</p>
+      <p class="tile-meta">Manage users, employee master &amp; Mantra sync</p>
     </a>
   {% endif %}
 

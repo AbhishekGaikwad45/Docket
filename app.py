@@ -233,11 +233,12 @@ def department_placeholder(name):
 @app.route("/department/admin", methods=["GET"])
 @require_admin
 def admin_module():
-    return render_admin_module()
+    source = request.args.get("source", "both")
+    return render_admin_module(selected_source=source)
 
 
-def render_admin_module(sync_result=None, sync_records=None):
-    """Render the admin page, optionally showing the latest Mantra sync rows."""
+def render_admin_module(sync_result=None, sync_records=None, selected_source="both"):
+    """Render the User Management page with all employees from the database table."""
     db = SessionLocal()
     try:
         req_records = (
@@ -247,16 +248,276 @@ def render_admin_module(sync_result=None, sync_records=None):
         )
         my_requests = [r.to_dict() for r in req_records]
         latest = my_requests[-1] if my_requests else None
-        employee_count = db.query(Employee).count()
+        employees = db.query(Employee).order_by(Employee.employee_id.asc()).all()
+        users = db.query(User).all()
+        user_roles = {u.emp_id: u.role for u in users if u.emp_id}
+
+        employee_records = []
+        departments_set = set()
+        staff_count = 0
+        associates_count = 0
+        manual_count = 0
+
+        for emp in employees:
+            d = emp.to_dict()
+            d["role"] = user_roles.get(emp.employee_id, "employee")
+            employee_records.append(d)
+            if emp.department:
+                departments_set.add(emp.department)
+
+            st = d.get("source_type", "manual")
+            if st == "staff":
+                staff_count += 1
+            elif st == "associates":
+                associates_count += 1
+            else:
+                manual_count += 1
+
+        departments = sorted(list(departments_set))
 
         return render_template(
             "admin.html",
             requests=my_requests,
             latest=latest,
-            employee_count=employee_count,
+            employee_count=len(employee_records),
+            employee_records=employee_records,
+            departments=departments,
             sync_result=sync_result,
             sync_records=sync_records or [],
+            selected_source=selected_source,
+            staff_count=staff_count,
+            associates_count=associates_count,
+            manual_count=manual_count,
         )
+    finally:
+        db.close()
+
+
+@app.route("/admin/users/<employee_id>/json", methods=["GET"])
+@require_admin
+def get_user_json(employee_id):
+    """Fetch a single user/employee record as JSON."""
+    db = SessionLocal()
+    try:
+        emp = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+        if not emp:
+            return jsonify({"success": False, "message": "User not found."}), 404
+        data = emp.to_dict()
+        user = db.query(User).filter(User.emp_id == employee_id).first()
+        data["role"] = user.role if user else "employee"
+        return jsonify({"success": True, "user": data})
+    finally:
+        db.close()
+
+
+@app.route("/admin/users/add", methods=["POST"])
+@require_admin
+def add_user():
+    """Create a new user/employee in the employees table where email_id is stored."""
+    payload = request.get_json(silent=True) or request.form
+    employee_id = (payload.get("employee_id") or "").strip()
+    employee_name = (payload.get("employee_name") or "").strip()
+    email_id = (payload.get("email_id") or "").strip().lower() or None
+    designation = (payload.get("designation") or "").strip() or None
+    department = (payload.get("department") or "").strip() or None
+    contact_no = (payload.get("contact_no") or "").strip() or None
+    gender = (payload.get("gender") or "").strip() or None
+    employee_status = (payload.get("employee_status") or "Active").strip()
+    role = (payload.get("role") or "employee").strip().lower()
+
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+
+    if not employee_id or not employee_name:
+        msg = "Employee ID and Employee Name are required."
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 400
+        flash(msg)
+        return redirect(url_for("admin_module"))
+
+    db = SessionLocal()
+    try:
+        existing = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+        if existing:
+            msg = f"A user with Employee ID '{employee_id}' already exists."
+            if is_ajax:
+                return jsonify({"success": False, "message": msg}), 400
+            flash(msg)
+            return redirect(url_for("admin_module"))
+
+        new_emp = Employee(
+            employee_id=employee_id,
+            employee_name=employee_name,
+            email_id=email_id,
+            designation=designation,
+            department=department,
+            contact_no=contact_no,
+            gender=gender,
+            employee_status=employee_status,
+            source_view="manual_entry",
+            last_synced_at=datetime.utcnow(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(new_emp)
+
+        # Sync/create linked User record for authentication
+        user = db.query(User).filter(User.username == employee_id).first()
+        if not user:
+            user = User(
+                emp_id=employee_id,
+                username=employee_id,
+                role=role if role in ("employee", "dept_head", "unit_head", "admin") else "employee",
+                is_admin=(role == "admin"),
+                is_active=(employee_status.lower() == "active"),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(user)
+        else:
+            user.emp_id = employee_id
+            user.is_active = (employee_status.lower() == "active")
+            if role in ("employee", "dept_head", "unit_head", "admin"):
+                user.role = role
+                user.is_admin = (role == "admin")
+
+        db.commit()
+        msg = f"User '{employee_name}' (ID: {employee_id}) added successfully."
+        if is_ajax:
+            return jsonify({"success": True, "message": msg, "user": new_emp.to_dict()})
+        flash(msg)
+        return redirect(url_for("admin_module"))
+    except Exception as e:
+        db.rollback()
+        app.logger.exception("Unable to add user")
+        msg = f"Failed to add user: {str(e)}"
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 500
+        flash(msg)
+        return redirect(url_for("admin_module"))
+    finally:
+        db.close()
+
+
+@app.route("/admin/users/<employee_id>/edit", methods=["POST"])
+@require_admin
+def edit_user(employee_id):
+    """Update a user/employee in the employees table where email_id is stored."""
+    payload = request.get_json(silent=True) or request.form
+    employee_name = (payload.get("employee_name") or "").strip()
+    email_id = (payload.get("email_id") or "").strip().lower() or None
+    designation = (payload.get("designation") or "").strip() or None
+    department = (payload.get("department") or "").strip() or None
+    contact_no = (payload.get("contact_no") or "").strip() or None
+    gender = (payload.get("gender") or "").strip() or None
+    employee_status = (payload.get("employee_status") or "Active").strip()
+    role = (payload.get("role") or "").strip().lower()
+
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+
+    if not employee_name:
+        msg = "Employee Name cannot be empty."
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 400
+        flash(msg)
+        return redirect(url_for("admin_module"))
+
+    db = SessionLocal()
+    try:
+        emp = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+        if not emp:
+            msg = f"User '{employee_id}' not found."
+            if is_ajax:
+                return jsonify({"success": False, "message": msg}), 404
+            flash(msg)
+            return redirect(url_for("admin_module"))
+
+        emp.employee_name = employee_name
+        emp.email_id = email_id
+        emp.designation = designation
+        emp.department = department
+        emp.contact_no = contact_no
+        emp.gender = gender
+        emp.employee_status = employee_status
+        emp.updated_at = datetime.utcnow()
+
+        # Update linked User account if present
+        user = db.query(User).filter((User.emp_id == employee_id) | (User.username == employee_id)).first()
+        if user:
+            user.is_active = (employee_status.lower() == "active")
+            if role in ("employee", "dept_head", "unit_head", "admin"):
+                user.role = role
+                user.is_admin = (role == "admin")
+            user.updated_at = datetime.utcnow()
+
+        db.commit()
+        msg = f"User '{employee_name}' (ID: {employee_id}) updated successfully."
+        if is_ajax:
+            return jsonify({"success": True, "message": msg, "user": emp.to_dict()})
+        flash(msg)
+        return redirect(url_for("admin_module"))
+    except Exception as e:
+        db.rollback()
+        app.logger.exception("Unable to edit user")
+        msg = f"Failed to update user: {str(e)}"
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 500
+        flash(msg)
+        return redirect(url_for("admin_module"))
+    finally:
+        db.close()
+
+
+@app.route("/admin/users/<employee_id>/delete", methods=["POST"])
+@require_admin
+def delete_user(employee_id):
+    """Delete a user/employee from the employees table and clean up related records."""
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json
+
+    current_emp_id = session.get("emp_id")
+    if current_emp_id == employee_id:
+        msg = "You cannot delete your own logged-in account."
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 400
+        flash(msg)
+        return redirect(url_for("admin_module"))
+
+    db = SessionLocal()
+    try:
+        emp = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+        if not emp:
+            msg = f"User '{employee_id}' not found."
+            if is_ajax:
+                return jsonify({"success": False, "message": msg}), 404
+            flash(msg)
+            return redirect(url_for("admin_module"))
+
+        user_name = emp.employee_name
+
+        # Dissociate any guest house requests
+        db.query(GuestHouseRequest).filter(GuestHouseRequest.created_by == employee_id).update(
+            {"created_by": None}, synchronize_session=False
+        )
+
+        # Delete any linked User account
+        db.query(User).filter(User.emp_id == employee_id).delete(synchronize_session=False)
+
+        # Delete the Employee record from the table where email_id is stored
+        db.delete(emp)
+        db.commit()
+
+        msg = f"User '{user_name}' (ID: {employee_id}) was deleted successfully."
+        if is_ajax:
+            return jsonify({"success": True, "message": msg})
+        flash(msg)
+        return redirect(url_for("admin_module"))
+    except Exception as e:
+        db.rollback()
+        app.logger.exception("Unable to delete user")
+        msg = f"Failed to delete user: {str(e)}"
+        if is_ajax:
+            return jsonify({"success": False, "message": msg}), 500
+        flash(msg)
+        return redirect(url_for("admin_module"))
     finally:
         db.close()
 
@@ -277,13 +538,14 @@ def sync_mantra_admin():
     )
 
     if result["success"]:
-        flash(f"Mantra Sync Successful: {result['total_upserted']} employee records synced from JSW_Dharamtar in {result['duration_seconds']}s.")
+        source_label = "Staff" if source == "staff" else ("Associates" if source == "associates" else "Staff & Associates")
+        flash(f"Mantra Sync Successful: {result['total_upserted']} {source_label} records synced from JSW_Dharamtar in {result['duration_seconds']}s.")
     else:
         err_msg = ", ".join(result["errors"])
         flash(f"Mantra Sync Failed: {err_msg}")
 
-    # Show exactly the rows returned by Mantra for this synchronization.
-    return render_admin_module(sync_result=result, sync_records=result.get("records", []))
+    # Pass selected_source so the table automatically filters and displays the synced employee type!
+    return render_admin_module(sync_result=result, sync_records=result.get("records", []), selected_source=source)
 
 
 @app.route("/admin/employees/<employee_id>/email", methods=["POST"])

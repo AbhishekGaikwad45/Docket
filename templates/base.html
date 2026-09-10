@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Department Portal{% endblock %}</title>
+  <title>{% block title %}User Management Portal{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
   <style>
@@ -848,6 +848,452 @@
       }
     }
 
+    /* =========================================================
+       USER MANAGEMENT PORTAL STYLES
+       ========================================================= */
+    .user-mgmt-header-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:20px;
+      flex-wrap:wrap;
+    }
+
+    .user-mgmt-toolbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:18px;
+      flex-wrap:wrap;
+      background:#fff;
+      padding:14px 18px;
+      border:1px solid #dce5f0;
+      border-radius:14px;
+      box-shadow:0 3px 12px rgba(20,49,91,.03);
+    }
+
+    .toolbar-left{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex:1;
+      flex-wrap:wrap;
+      min-width:280px;
+    }
+
+    .toolbar-search-wrap{
+      position:relative;
+      flex:1;
+      min-width:220px;
+      max-width:380px;
+    }
+
+    .toolbar-search-input{
+      width:100%;
+      height:40px;
+      padding:0 14px 0 38px;
+      border:1px solid #cbd5e1;
+      border-radius:10px;
+      font-size:13.5px;
+      color:#1e293b;
+      background:#f8fafc;
+      transition:all .15s ease;
+    }
+
+    .toolbar-search-input:focus{
+      background:#fff;
+      border-color:#0756b9;
+      box-shadow:0 0 0 3px rgba(7,86,185,.12);
+    }
+
+    .toolbar-search-icon{
+      position:absolute;
+      left:12px;
+      top:50%;
+      transform:translateY(-50%);
+      color:#94a3b8;
+      pointer-events:none;
+      font-size:14px;
+    }
+
+    .toolbar-select{
+      height:40px;
+      padding:0 12px;
+      border:1px solid #cbd5e1;
+      border-radius:10px;
+      font-size:13px;
+      color:#334155;
+      background:#f8fafc;
+      min-width:140px;
+      cursor:pointer;
+    }
+
+    .toolbar-select:focus{
+      border-color:#0756b9;
+      background:#fff;
+      outline:none;
+      box-shadow:0 0 0 3px rgba(7,86,185,.12);
+    }
+
+    .toolbar-right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .btn-primary-action{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      height:40px;
+      padding:0 18px;
+      background:linear-gradient(135deg,#0756b9,#0b6bd5);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      font-size:13.5px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 4px 12px rgba(7,86,185,.25);
+      transition:all .15s ease;
+    }
+
+    .btn-primary-action:hover{
+      transform:translateY(-1px);
+      box-shadow:0 6px 16px rgba(7,86,185,.32);
+      background:linear-gradient(135deg,#064aa0,#0a60c0);
+    }
+
+    .btn-secondary-action{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      height:40px;
+      padding:0 14px;
+      background:#f1f5f9;
+      color:#334155;
+      border:1px solid #cbd5e1;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:600;
+      cursor:pointer;
+      transition:all .15s ease;
+    }
+
+    .btn-secondary-action:hover{
+      background:#e2e8f0;
+      color:#0f172a;
+    }
+
+    /* Action Buttons in Table */
+    .table-actions{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+
+    .btn-action{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:5px 10px;
+      border-radius:6px;
+      font-size:12px;
+      font-weight:600;
+      cursor:pointer;
+      border:1px solid transparent;
+      transition:all .15s ease;
+    }
+
+    .btn-action-edit{
+      background:#eff6ff;
+      color:#1d4ed8;
+      border-color:#bfdbfe;
+    }
+
+    .btn-action-edit:hover{
+      background:#dbeafe;
+      color:#1e40af;
+    }
+
+    .btn-action-delete{
+      background:#fef2f2;
+      color:#b91c1c;
+      border-color:#fecaca;
+    }
+
+    .btn-action-delete:hover{
+      background:#fee2e2;
+      color:#991b1b;
+    }
+
+    /* Status badges */
+    .status-badge{
+      display:inline-block;
+      padding:3px 9px;
+      border-radius:9999px;
+      font-size:11.5px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+    }
+
+    .status-badge-active{
+      background:#dcfce7;
+      color:#15803d;
+      border:1px solid #bbf7d0;
+    }
+
+    .status-badge-inactive{
+      background:#f1f5f9;
+      color:#64748b;
+      border:1px solid #e2e8f0;
+    }
+
+    /* Role badges */
+    .role-badge{
+      display:inline-block;
+      padding:2px 7px;
+      border-radius:6px;
+      font-size:11px;
+      font-weight:600;
+      background:#f0f4f8;
+      color:#475569;
+    }
+
+    .role-badge-admin{
+      background:#fef3c7;
+      color:#92400e;
+    }
+
+    /* Pagination */
+    .pagination-bar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 18px;
+      background:#fff;
+      border:1px solid #dce5f0;
+      border-top:none;
+      border-radius:0 0 10px 10px;
+      font-size:13px;
+      color:#64748b;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    .pagination-controls{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+
+    .btn-page{
+      min-width:32px;
+      height:32px;
+      padding:0 8px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      color:#334155;
+      border-radius:6px;
+      font-size:12.5px;
+      font-weight:600;
+      cursor:pointer;
+      transition:all .15s ease;
+    }
+
+    .btn-page:hover:not(:disabled){
+      background:#f1f5f9;
+      border-color:#94a3b8;
+    }
+
+    .btn-page.active{
+      background:#0756b9;
+      color:#fff;
+      border-color:#0756b9;
+    }
+
+    .btn-page:disabled{
+      opacity:.4;
+      cursor:not-allowed;
+    }
+
+    /* CRUD Modals */
+    .crud-modal{
+      position:fixed;
+      inset:0;
+      z-index:99999;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      background:rgba(8,30,68,.54);
+      backdrop-filter:blur(5px);
+    }
+
+    .crud-modal.open{
+      display:flex;
+    }
+
+    .crud-modal-box{
+      width:min(640px, 100%);
+      max-height:92vh;
+      overflow-y:auto;
+      background:#fff;
+      border-radius:18px;
+      border:1px solid #dce6f4;
+      box-shadow:0 24px 60px rgba(0,22,61,.28);
+      animation:crudModalIn .18s cubic-bezier(.16,1,.3,1);
+    }
+
+    @keyframes crudModalIn{
+      from{ opacity:0; transform:translateY(14px) scale(.98); }
+      to{ opacity:1; transform:translateY(0) scale(1); }
+    }
+
+    .crud-modal-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:20px 24px;
+      border-bottom:1px solid #e5ecf5;
+    }
+
+    .crud-modal-title{
+      margin:0;
+      font-size:19px;
+      font-weight:800;
+      color:#12295b;
+    }
+
+    .crud-modal-subtitle{
+      margin:3px 0 0;
+      font-size:12.5px;
+      color:#64748b;
+    }
+
+    .crud-modal-close{
+      width:34px;
+      height:34px;
+      border-radius:8px;
+      border:none;
+      background:#f1f5f9;
+      color:#64748b;
+      font-size:20px;
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      line-height:1;
+    }
+
+    .crud-modal-close:hover{
+      background:#e2e8f0;
+      color:#0f172a;
+    }
+
+    .crud-modal-body{
+      padding:24px;
+    }
+
+    .crud-form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+    }
+
+    @media(max-width:580px){
+      .crud-form-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    .crud-form-group{
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+    }
+
+    .crud-form-group.full-width{
+      grid-column:1 / -1;
+    }
+
+    .crud-form-label{
+      font-size:12px;
+      font-weight:700;
+      color:#334155;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+    }
+
+    .crud-form-label .required{
+      color:#dc2626;
+    }
+
+    .crud-form-input, .crud-form-select{
+      height:40px;
+      padding:0 12px;
+      border:1px solid #cbd5e1;
+      border-radius:8px;
+      font-size:13.5px;
+      color:#1e293b;
+      background:#fff;
+      transition:all .15s ease;
+      width:100%;
+    }
+
+    .crud-form-input:focus, .crud-form-select:focus{
+      border-color:#0756b9;
+      outline:none;
+      box-shadow:0 0 0 3px rgba(7,86,185,.12);
+    }
+
+    .crud-form-input:disabled{
+      background:#f1f5f9;
+      color:#64748b;
+      cursor:not-allowed;
+    }
+
+    .crud-modal-footer{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+      padding:18px 24px;
+      background:#f8fafc;
+      border-top:1px solid #e5ecf5;
+      border-radius:0 0 18px 18px;
+    }
+
+    .crud-error-msg{
+      display:none;
+      margin-bottom:14px;
+      padding:10px 14px;
+      border-radius:8px;
+      background:#fef2f2;
+      border:1px solid #fecaca;
+      color:#b91c1c;
+      font-size:12.5px;
+      font-weight:600;
+    }
+
+    /* Delete modal specific */
+    .delete-confirm-icon{
+      width:48px;
+      height:48px;
+      border-radius:50%;
+      background:#fee2e2;
+      color:#dc2626;
+      display:grid;
+      place-items:center;
+      font-size:24px;
+      margin-bottom:16px;
+    }
+
   </style>
 
   {% block head %}{% endblock %}
@@ -861,13 +1307,13 @@
       <img class="sidebar-logo"
            src="{{ url_for('static', filename='img/logo31.png') }}"
            alt="JSW Dharamtar Port">
-      <p class="sidebar-portal">Department Portal</p>
+      <p class="sidebar-portal">User Management Portal</p>
     </div>
 
     {% if session.get('is_admin') %}
       <a class="nav-item {% if active=='admin' %}active{% endif %}"
          href="{{ url_for('admin_module') }}">
-        <span class="nav-dot"></span>Administration
+        <span class="nav-dot"></span>User Management
       </a>
     {% else %}
       <a class="nav-item {% if active=='dashboard' %}active{% endif %}"

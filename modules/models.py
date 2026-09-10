@@ -65,6 +65,17 @@ class Employee(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
+    @property
+    def source_type(self) -> str:
+        if not self.source_view:
+            return "manual"
+        sv = self.source_view.lower()
+        if "staff" in sv:
+            return "staff"
+        if "associate" in sv:
+            return "associates"
+        return "manual"
+
     def to_dict(self):
         return {
             "employee_id": self.employee_id,
@@ -77,6 +88,7 @@ class Employee(Base):
             "gender": self.gender,
             "category": self.category,
             "source_view": self.source_view,
+            "source_type": self.source_type,
             "last_synced_at": self.last_synced_at.isoformat() if self.last_synced_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
