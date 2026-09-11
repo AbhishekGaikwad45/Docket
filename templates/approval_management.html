@@ -1,0 +1,2002 @@
+{% extends "base.html" %}
+{% block title %}Approval Management • Workflow Designer{% endblock %}
+{% set active = 'approvals_mgmt' %}
+
+{% block content %}
+<div class="wf-container">
+
+  <!-- =========================================================================
+       TOP CONTROL TOOLBAR
+       ========================================================================= -->
+  <header class="wf-toolbar">
+    <div class="wf-toolbar-left">
+      <div class="wf-title-group">
+        <span class="wf-badge">ADMINISTRATION WORKFLOW BUILDER</span>
+        <h1 class="wf-title">Approval Management</h1>
+        <p class="wf-subtitle">Design multi-level hierarchical approval chains, assign multiple approvers, and manage process workflows.</p>
+      </div>
+
+      <div class="wf-selector-wrap">
+        <label for="wf-select" class="wf-label">Active Process:</label>
+        <div class="wf-select-box">
+          <select id="wf-select" class="wf-select">
+            {% for wf in workflows %}
+              <option value="{{ wf.id }}" {% if loop.first %}selected{% endif %}>
+                {{ wf.name }} ({{ wf.code }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="button" class="wf-btn wf-btn-outline" id="btn-rename-wf" title="Rename Process">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+          Rename
+        </button>
+        <button type="button" class="wf-btn wf-btn-danger-outline" id="btn-delete-wf" title="Delete Process">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          Delete
+        </button>
+      </div>
+    </div>
+
+    <div class="wf-toolbar-right">
+      <button type="button" class="wf-btn wf-btn-secondary" id="btn-new-wf">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Process
+      </button>
+      <button type="button" class="wf-btn wf-btn-outline" id="btn-add-stage">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add Stage
+      </button>
+      <button type="button" class="wf-btn wf-btn-primary" id="btn-save-wf">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span id="save-btn-text">Save Workflow</span>
+      </button>
+      <div class="wf-save-status" id="save-status-pill">
+        <span class="status-dot"></span>
+        <span class="status-text">All changes saved</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       MAIN WORKSPACE (CANVAS + PALETTE SIDEBAR)
+       ========================================================================= -->
+  <div class="wf-workspace">
+
+    <!-- LEFT / CENTER: WORKFLOW PIPELINE CANVAS -->
+    <main class="wf-canvas-area" id="wf-canvas-area">
+
+      <div class="canvas-header-bar">
+        <div class="canvas-meta">
+          <span class="meta-label">Hierarchical Execution Order:</span>
+          <span class="meta-desc">Subordinate Stages execute sequentially from bottom to top, culminating in Final Parent Approval.</span>
+        </div>
+        <div class="canvas-actions">
+          <button type="button" class="btn-text-sm" id="btn-clear-approvers">Clear All Approvers</button>
+        </div>
+      </div>
+
+      <!-- The visual pipeline container -->
+      <div class="wf-tree-pipeline" id="wf-tree-pipeline">
+        <!-- Rendered dynamically by JS -->
+      </div>
+
+    </main>
+
+    <!-- RIGHT: SYNCED USERS PALETTE SIDEBAR -->
+    <aside class="wf-palette-sidebar">
+      <div class="palette-header">
+        <div class="palette-title-row">
+          <h2 class="palette-title">Synced Employees</h2>
+          <span class="palette-count" id="palette-emp-count">{{ employees|length }}</span>
+        </div>
+        <p class="palette-sub">Drag users directly into any stage or use the + menu.</p>
+      </div>
+
+      <!-- Palette Controls: Search & Filters -->
+      <div class="palette-filters">
+        <div class="palette-search-box">
+          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="palette-search" placeholder="Search by name, ID, dept..." autocomplete="off">
+          <button type="button" id="palette-clear-search" class="clear-search-btn" style="display:none;">&times;</button>
+        </div>
+
+        <div class="palette-filter-row">
+          <!-- Source Toggle Pill: All, Staff, Associates -->
+          <div class="source-pills" id="source-pills">
+            <button type="button" class="source-pill active" data-source="all">All</button>
+            <button type="button" class="source-pill" data-source="staff">Staff</button>
+            <button type="button" class="source-pill" data-source="associates">Associates</button>
+          </div>
+
+          <!-- Department dropdown -->
+          <select id="palette-dept-filter" class="palette-dept-select">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Scrollable draggable employee list -->
+      <div class="palette-list" id="palette-employee-list">
+        <!-- Rendered by JS from employees data -->
+      </div>
+
+      <div class="palette-footer">
+        <span class="drag-hint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+          Drag employee card onto a stage drop zone
+        </span>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+<!-- =========================================================================
+     MODAL: CREATE NEW WORKFLOW PROCESS
+     ========================================================================= -->
+<div class="wf-modal" id="modal-new-wf" aria-hidden="true">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header">
+      <div>
+        <h3 class="wf-modal-title">Create New Approval Process</h3>
+        <p class="wf-modal-subtitle">Configure an independent workflow for a form or request type.</p>
+      </div>
+      <button type="button" class="wf-modal-close" id="modal-new-wf-close">&times;</button>
+    </div>
+    <form id="form-new-wf" class="wf-modal-body">
+      <div class="wf-form-group">
+        <label for="new-wf-name" class="wf-form-label">Process Name <span class="required">*</span></label>
+        <input type="text" id="new-wf-name" name="name" class="wf-form-input" placeholder="e.g. Gate Pass Approval" required>
+        <span class="wf-form-hint">Descriptive label shown to administrators and approvers.</span>
+      </div>
+      <div class="wf-form-group">
+        <label for="new-wf-code" class="wf-form-label">Process Code <span class="required">*</span></label>
+        <input type="text" id="new-wf-code" name="code" class="wf-form-input" placeholder="e.g. gate_pass" required>
+        <span class="wf-form-hint">Unique alphanumeric identifier (e.g. leave_request, gate_pass).</span>
+      </div>
+      <div class="wf-form-group">
+        <label for="new-wf-desc" class="wf-form-label">Description (Optional)</label>
+        <textarea id="new-wf-desc" name="description" class="wf-form-textarea" rows="3" placeholder="Briefly describe what this workflow is used for..."></textarea>
+      </div>
+      <div class="wf-modal-footer">
+        <button type="button" class="wf-btn wf-btn-outline" id="modal-new-wf-cancel">Cancel</button>
+        <button type="submit" class="wf-btn wf-btn-primary" id="modal-new-wf-submit">Create Process</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: RENAME WORKFLOW PROCESS
+     ========================================================================= -->
+<div class="wf-modal" id="modal-rename-wf" aria-hidden="true">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header">
+      <div>
+        <h3 class="wf-modal-title">Rename Approval Process</h3>
+        <p class="wf-modal-subtitle">Update display name or description for this process.</p>
+      </div>
+      <button type="button" class="wf-modal-close" id="modal-rename-wf-close">&times;</button>
+    </div>
+    <form id="form-rename-wf" class="wf-modal-body">
+      <div class="wf-form-group">
+        <label for="rename-wf-name" class="wf-form-label">Process Name <span class="required">*</span></label>
+        <input type="text" id="rename-wf-name" class="wf-form-input" required>
+      </div>
+      <div class="wf-form-group">
+        <label for="rename-wf-desc" class="wf-form-label">Description</label>
+        <textarea id="rename-wf-desc" class="wf-form-textarea" rows="3"></textarea>
+      </div>
+      <div class="wf-modal-footer">
+        <button type="button" class="wf-btn wf-btn-outline" id="modal-rename-wf-cancel">Cancel</button>
+        <button type="submit" class="wf-btn wf-btn-primary">Save Details</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: CONFIRM DELETE WORKFLOW
+     ========================================================================= -->
+<div class="wf-modal" id="modal-delete-wf" aria-hidden="true">
+  <div class="wf-modal-box modal-sm">
+    <div class="wf-modal-header">
+      <h3 class="wf-modal-title text-danger">Delete Approval Process</h3>
+      <button type="button" class="wf-modal-close" id="modal-delete-wf-close">&times;</button>
+    </div>
+    <div class="wf-modal-body">
+      <p>Are you sure you want to delete <strong id="delete-wf-name"></strong>?</p>
+      <p class="text-muted-sm">This will permanently remove the workflow hierarchy, stages, and assigned approvers.</p>
+      <div class="wf-modal-footer">
+        <button type="button" class="wf-btn wf-btn-outline" id="modal-delete-wf-cancel">Cancel</button>
+        <button type="button" class="wf-btn wf-btn-danger" id="modal-delete-wf-confirm">Delete Process</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: QUICK ASSIGN APPROVER (CLICK-TO-ADD FALLBACK)
+     ========================================================================= -->
+<div class="wf-modal" id="modal-assign-approver" aria-hidden="true">
+  <div class="wf-modal-box">
+    <div class="wf-modal-header">
+      <div>
+        <h3 class="wf-modal-title" id="assign-modal-title">Assign Approver</h3>
+        <p class="wf-modal-subtitle">Select an employee from the synced master to add to this stage.</p>
+      </div>
+      <button type="button" class="wf-modal-close" id="modal-assign-close">&times;</button>
+    </div>
+    <div class="wf-modal-body">
+      <div class="palette-search-box" style="margin-bottom:14px;">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="assign-modal-search" placeholder="Quick search employee...">
+      </div>
+      <div class="assign-quick-list" id="assign-quick-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     STYLES
+     ========================================================================= -->
+<style>
+  /* Base Layout */
+  .wf-container {
+    max-width: 1480px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Toolbar */
+  .wf-toolbar {
+    background: #ffffff;
+    border: 1px solid #dce5f0;
+    border-radius: 16px;
+    padding: 20px 26px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
+  }
+
+  .wf-toolbar-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .wf-badge {
+    display: inline-block;
+    padding: 3px 9px;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #0756b9;
+    background: #edf5fe;
+    border-radius: 6px;
+    letter-spacing: 0.8px;
+  }
+
+  .wf-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: #112753;
+    letter-spacing: -0.4px;
+  }
+
+  .wf-subtitle {
+    margin: 2px 0 0;
+    font-size: 13.5px;
+    color: #627591;
+  }
+
+  .wf-selector-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .wf-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #3b4d6b;
+  }
+
+  .wf-select-box {
+    position: relative;
+  }
+
+  .wf-select {
+    height: 38px;
+    padding: 0 32px 0 12px;
+    border: 1px solid #c9d7e7;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #122956;
+    background: #ffffff;
+    cursor: pointer;
+    outline: none;
+    transition: all .15s;
+  }
+  .wf-select:focus {
+    border-color: #0756b9;
+    box-shadow: 0 0 0 3px rgba(7, 86, 185, 0.12);
+  }
+
+  .wf-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Buttons */
+  .wf-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s ease;
+    border: 1px solid transparent;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .wf-btn:active {
+    transform: scale(0.98);
+  }
+
+  .wf-btn-primary {
+    background: linear-gradient(135deg, #0756b9 0%, #0b6bd5 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(7, 86, 185, 0.22);
+  }
+  .wf-btn-primary:hover {
+    background: linear-gradient(135deg, #064ca4 0%, #095ec0 100%);
+    box-shadow: 0 6px 16px rgba(7, 86, 185, 0.28);
+  }
+
+  .wf-btn-secondary {
+    background: #112753;
+    color: #ffffff;
+  }
+  .wf-btn-secondary:hover {
+    background: #1a3977;
+  }
+
+  .wf-btn-outline {
+    background: #ffffff;
+    border-color: #cbd8e8;
+    color: #2b4065;
+  }
+  .wf-btn-outline:hover {
+    background: #f4f8fd;
+    border-color: #0756b9;
+    color: #0756b9;
+  }
+
+  .wf-btn-danger-outline {
+    background: #ffffff;
+    border-color: #ffd2d4;
+    color: #dc2626;
+  }
+  .wf-btn-danger-outline:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+  }
+
+  .wf-btn-danger {
+    background: #dc2626;
+    color: #ffffff;
+  }
+  .wf-btn-danger:hover {
+    background: #b91c1c;
+  }
+
+  .wf-save-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: #eef7ee;
+    color: #1e7e34;
+    border: 1px solid #d1edd5;
+  }
+  .wf-save-status.unsaved {
+    background: #fff8e8;
+    color: #b7791f;
+    border-color: #fef0cd;
+  }
+  .wf-save-status.saving {
+    background: #e8f3fe;
+    color: #0756b9;
+    border-color: #d1e5fa;
+  }
+  .wf-save-status .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Workspace Layout */
+  .wf-workspace {
+    display: grid;
+    grid-template-columns: 1fr 390px;
+    gap: 22px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) {
+    .wf-workspace {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Canvas Area */
+  .wf-canvas-area {
+    background: #ffffff;
+    border: 1px solid #dce5f0;
+    border-radius: 18px;
+    padding: 28px 30px 40px;
+    min-height: 680px;
+    box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
+    position: relative;
+  }
+
+  .canvas-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+    border-bottom: 1px dashed #e2ebf4;
+  }
+
+  .canvas-meta .meta-label {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #0756b9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 6px;
+  }
+  .canvas-meta .meta-desc {
+    font-size: 12.5px;
+    color: #71829d;
+  }
+
+  .btn-text-sm {
+    background: none;
+    border: none;
+    color: #677b99;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .btn-text-sm:hover {
+    color: #dc2626;
+  }
+
+  /* Hierarchical Workflow Tree Pipeline */
+  .wf-tree-pipeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  /* Hierarchical Connector */
+  .wf-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 48px;
+    position: relative;
+  }
+  .wf-connector-line {
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, #0756b9 0%, #a8c8ee 100%);
+    border-radius: 2px;
+  }
+  .wf-connector-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #ffffff;
+    border: 2px solid #0756b9;
+    color: #0756b9;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    box-shadow: 0 2px 6px rgba(7, 86, 185, 0.15);
+  }
+
+  /* Stage Nodes (Cards) */
+  .wf-stage-card {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #dce5f0;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(18, 41, 86, 0.05);
+    transition: all .2s cubic-bezier(.16,1,.3,1);
+    overflow: hidden;
+    position: relative;
+  }
+  .wf-stage-card:hover {
+    border-color: #b7cee8;
+    box-shadow: 0 8px 24px rgba(18, 41, 86, 0.08);
+  }
+
+  /* Parent / Final Approval Card Styling */
+  .wf-stage-card.is-final-stage {
+    border: 2px solid #0756b9;
+    background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+    box-shadow: 0 8px 28px rgba(7, 86, 185, 0.12);
+  }
+
+  .wf-stage-header {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid #edf3f8;
+    background: #fafcff;
+  }
+  .is-final-stage .wf-stage-header {
+    background: linear-gradient(90deg, #edf5ff 0%, #f4f8ff 100%);
+    border-bottom: 1px solid #dce8f8;
+  }
+
+  .stage-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .stage-badge-pill {
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #eaf1fa;
+    color: #0756b9;
+  }
+  .is-final-stage .stage-badge-pill {
+    background: #0756b9;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .stage-title-input {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #12284e;
+    background: transparent;
+    outline: none;
+    transition: all .15s;
+    flex: 1;
+    max-width: 320px;
+  }
+  .stage-title-input:hover {
+    border-color: #cbd8e8;
+    background: #ffffff;
+  }
+  .stage-title-input:focus {
+    border-color: #0756b9;
+    background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(7, 86, 185, 0.12);
+  }
+
+  .stage-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .stage-rule-tag {
+    font-size: 11px;
+    font-weight: 700;
+    color: #5c6f8a;
+    background: #eef3f9;
+    padding: 3px 8px;
+    border-radius: 12px;
+  }
+
+  .stage-delete-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    transition: all .15s;
+  }
+  .stage-delete-btn:hover {
+    color: #dc2626;
+    background: #fee2e2;
+  }
+
+  /* Drop Zone */
+  .wf-drop-zone {
+    min-height: 105px;
+    padding: 16px;
+    background: #ffffff;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    transition: all .2s ease;
+    position: relative;
+  }
+  .wf-drop-zone.drag-over {
+    background: #f0f7ff;
+    outline: 2px dashed #0756b9;
+    outline-offset: -3px;
+  }
+
+  .drop-placeholder {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    border: 2px dashed #d5e0ee;
+    border-radius: 10px;
+    color: #7b8ea7;
+    font-size: 12.5px;
+    font-weight: 600;
+    gap: 4px;
+    background: #fafcff;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .drop-placeholder:hover {
+    border-color: #0756b9;
+    color: #0756b9;
+    background: #f4f8fe;
+  }
+  .drag-over .drop-placeholder {
+    border-color: #0756b9;
+    background: #eaf3fe;
+    color: #0756b9;
+  }
+
+  /* Dropped Approver Chips */
+  .approver-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 12px 6px 8px;
+    background: #ffffff;
+    border: 1px solid #d3e1f0;
+    border-radius: 24px;
+    box-shadow: 0 2px 8px rgba(17, 43, 86, 0.05);
+    transition: all .15s ease;
+  }
+  .approver-chip:hover {
+    border-color: #9ebde3;
+    box-shadow: 0 3px 10px rgba(7, 86, 185, 0.10);
+    transform: translateY(-1px);
+  }
+
+  .approver-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0756b9, #17376c);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .approver-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .approver-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #12284c;
+  }
+  .approver-meta {
+    font-size: 11px;
+    color: #64748b;
+  }
+
+  .approver-remove-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 13px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    line-height: 1;
+    margin-left: 2px;
+    transition: all .15s;
+  }
+  .approver-remove-btn:hover {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .stage-quick-add-btn {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 16px;
+    border: 1px dashed #93b3dc;
+    background: #f4f8fe;
+    color: #0756b9;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all .15s;
+  }
+  .stage-quick-add-btn:hover {
+    background: #e5f0fd;
+    border-color: #0756b9;
+  }
+
+  /* Right Palette Sidebar */
+  .wf-palette-sidebar {
+    background: #ffffff;
+    border: 1px solid #dce5f0;
+    border-radius: 18px;
+    box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 140px);
+    min-height: 640px;
+    position: sticky;
+    top: 96px;
+    overflow: hidden;
+  }
+
+  .palette-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid #edf3f8;
+  }
+  .palette-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .palette-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #12284c;
+  }
+  .palette-count {
+    font-size: 11px;
+    font-weight: 800;
+    color: #0756b9;
+    background: #eaf2fb;
+    padding: 3px 8px;
+    border-radius: 10px;
+  }
+  .palette-sub {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #71829d;
+  }
+
+  .palette-filters {
+    padding: 14px 20px;
+    border-bottom: 1px solid #edf3f8;
+    background: #fbfdff;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .palette-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .palette-search-box .search-icon {
+    position: absolute;
+    left: 11px;
+    color: #8c9eb4;
+    pointer-events: none;
+  }
+  .palette-search-box input {
+    width: 100%;
+    height: 36px;
+    padding: 0 30px 0 34px;
+    border: 1px solid #d1dee9;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #1e293b;
+    outline: none;
+    transition: all .15s;
+  }
+  .palette-search-box input:focus {
+    border-color: #0756b9;
+    box-shadow: 0 0 0 2px rgba(7, 86, 185, 0.12);
+  }
+  .clear-search-btn {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #94a3b8;
+    cursor: pointer;
+  }
+
+  .palette-filter-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .source-pills {
+    display: flex;
+    background: #edf3f8;
+    border-radius: 8px;
+    padding: 2px;
+  }
+  .source-pill {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 5px 0;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #5b6d85;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .source-pill.active {
+    background: #ffffff;
+    color: #0756b9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .palette-dept-select {
+    height: 32px;
+    border: 1px solid #d1dee9;
+    border-radius: 6px;
+    padding: 0 8px;
+    font-size: 12px;
+    color: #334155;
+    background: #ffffff;
+    outline: none;
+  }
+
+  .palette-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Draggable Employee Card */
+  .draggable-emp-card {
+    background: #ffffff;
+    border: 1px solid #dce5f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: grab;
+    transition: all .15s ease;
+    user-select: none;
+  }
+  .draggable-emp-card:hover {
+    border-color: #0756b9;
+    box-shadow: 0 4px 12px rgba(7, 86, 185, 0.10);
+    transform: translateY(-1px);
+  }
+  .draggable-emp-card:active {
+    cursor: grabbing;
+  }
+  .draggable-emp-card.dragging {
+    opacity: 0.45;
+    border: 1px dashed #0756b9;
+  }
+
+  .drag-grip {
+    color: #b1c1d4;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .emp-card-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #eef4fc;
+    color: #0756b9;
+    font-size: 12px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    border: 1px solid #d4e2f3;
+  }
+
+  .emp-card-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .emp-card-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #152b53;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .emp-card-sub {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .emp-source-tag {
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .emp-source-tag.staff {
+    background: #eaf3fd;
+    color: #0756b9;
+  }
+  .emp-source-tag.associates {
+    background: #fdf2e9;
+    color: #d97706;
+  }
+
+  .palette-footer {
+    padding: 10px 16px;
+    border-top: 1px solid #edf3f8;
+    background: #fafcff;
+    font-size: 11.5px;
+    color: #71829d;
+  }
+  .drag-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Modals */
+  .wf-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(10, 29, 65, 0.55);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .wf-modal.open {
+    display: flex;
+  }
+
+  .wf-modal-box {
+    background: #ffffff;
+    border-radius: 16px;
+    width: min(540px, 100%);
+    box-shadow: 0 24px 60px rgba(0, 22, 61, 0.25);
+    border: 1px solid #dce6f4;
+    overflow: hidden;
+    animation: modalIn .18s cubic-bezier(.16,1,.3,1);
+  }
+  .wf-modal-box.modal-sm {
+    width: min(420px, 100%);
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(12px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .wf-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e8eff6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .wf-modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #12284c;
+  }
+  .wf-modal-title.text-danger {
+    color: #dc2626;
+  }
+  .wf-modal-subtitle {
+    margin: 3px 0 0;
+    font-size: 12.5px;
+    color: #64748b;
+  }
+  .wf-modal-close {
+    background: #f1f5f9;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 20px;
+    color: #64748b;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+  }
+  .wf-modal-close:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+
+  .wf-modal-body {
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .wf-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .wf-form-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .wf-form-label .required {
+    color: #dc2626;
+  }
+  .wf-form-input, .wf-form-textarea {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    color: #1e293b;
+    outline: none;
+    transition: all .15s;
+    width: 100%;
+    font-family: inherit;
+  }
+  .wf-form-input:focus, .wf-form-textarea:focus {
+    border-color: #0756b9;
+    box-shadow: 0 0 0 2px rgba(7, 86, 185, 0.12);
+  }
+  .wf-form-hint {
+    font-size: 11px;
+    color: #71829d;
+  }
+
+  .wf-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .assign-quick-list {
+    max-height: 300px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .assign-quick-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border: 1px solid #e2eaf3;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .assign-quick-item:hover {
+    background: #edf5fe;
+    border-color: #0756b9;
+  }
+</style>
+
+<!-- =========================================================================
+     WORKFLOW DESIGNER JAVASCRIPT ENGINE
+     ========================================================================= -->
+<script>
+(function() {
+  'use strict';
+
+  // Server-rendered initial payloads
+  const WORKFLOWS = {{ workflows|tojson }};
+  const EMPLOYEES = {{ employees|tojson }};
+
+  // State
+  let currentWorkflowId = WORKFLOWS.length > 0 ? WORKFLOWS[0].id : null;
+  let activeFlowData = null;
+  let isDirty = false;
+  let targetStageForModal = null;
+
+  // Cache employee lookup by ID
+  const employeeMap = new Map();
+  EMPLOYEES.forEach(emp => {
+    employeeMap.set(emp.employee_id, emp);
+  });
+
+  // DOM Elements
+  const wfSelect = document.getElementById('wf-select');
+  const btnSaveWf = document.getElementById('btn-save-wf');
+  const saveBtnText = document.getElementById('save-btn-text');
+  const saveStatusPill = document.getElementById('save-status-pill');
+  const statusText = saveStatusPill.querySelector('.status-text');
+  const btnAddStage = document.getElementById('btn-add-stage');
+  const btnNewWf = document.getElementById('btn-new-wf');
+  const btnRenameWf = document.getElementById('btn-rename-wf');
+  const btnDeleteWf = document.getElementById('btn-delete-wf');
+  const btnClearApprovers = document.getElementById('btn-clear-approvers');
+
+  const paletteSearch = document.getElementById('palette-search');
+  const paletteClearSearch = document.getElementById('palette-clear-search');
+  const paletteDeptFilter = document.getElementById('palette-dept-filter');
+  const sourcePills = document.getElementById('source-pills');
+  const paletteList = document.getElementById('palette-employee-list');
+  const paletteCount = document.getElementById('palette-emp-count');
+  const canvasPipeline = document.getElementById('wf-tree-pipeline');
+
+  // Modals
+  const modalNewWf = document.getElementById('modal-new-wf');
+  const modalRenameWf = document.getElementById('modal-rename-wf');
+  const modalDeleteWf = document.getElementById('modal-delete-wf');
+  const modalAssign = document.getElementById('modal-assign-approver');
+
+  // Initialize
+  init();
+
+  function init() {
+    populateDeptFilter();
+    renderPaletteEmployees();
+    bindEvents();
+
+    if (currentWorkflowId) {
+      loadWorkflow(currentWorkflowId);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Populate Department Filter
+  // -------------------------------------------------------------------------
+  function populateDeptFilter() {
+    const depts = new Set();
+    EMPLOYEES.forEach(e => {
+      if (e.department && e.department.trim()) {
+        depts.add(e.department.trim());
+      }
+    });
+    const sorted = Array.from(depts).sort();
+    sorted.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = d;
+      paletteDeptFilter.appendChild(opt);
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Render Employees in Right Palette
+  // -------------------------------------------------------------------------
+  function renderPaletteEmployees() {
+    const q = (paletteSearch.value || '').trim().toLowerCase();
+    const activeSourcePill = sourcePills.querySelector('.source-pill.active');
+    const selectedSource = activeSourcePill ? activeSourcePill.dataset.source : 'all';
+    const selectedDept = paletteDeptFilter.value;
+
+    const filtered = EMPLOYEES.filter(emp => {
+      // Source filter
+      if (selectedSource !== 'all') {
+        if (emp.source_type !== selectedSource) return false;
+      }
+      // Department filter
+      if (selectedDept && emp.department !== selectedDept) return false;
+
+      // Text query
+      if (!q) return true;
+      const name = (emp.employee_name || '').toLowerCase();
+      const id = (emp.employee_id || '').toLowerCase();
+      const dept = (emp.department || '').toLowerCase();
+      const desig = (emp.designation || '').toLowerCase();
+      return name.includes(q) || id.includes(q) || dept.includes(q) || desig.includes(q);
+    });
+
+    paletteCount.textContent = filtered.length;
+    paletteList.innerHTML = '';
+
+    if (filtered.length === 0) {
+      paletteList.innerHTML = `
+        <div style="text-align:center;padding:30px 15px;color:#8c9eb4;font-size:12.5px;">
+          No matching employees found.
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach(emp => {
+      const card = document.createElement('div');
+      card.className = 'draggable-emp-card';
+      card.setAttribute('draggable', 'true');
+      card.dataset.empId = emp.employee_id;
+      card.dataset.empName = emp.employee_name;
+      card.dataset.empDesig = emp.designation || '';
+      card.dataset.empDept = emp.department || '';
+      card.dataset.empSource = emp.source_type;
+
+      const initials = (emp.employee_name || 'E').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+
+      card.innerHTML = `
+        <div class="drag-grip" title="Drag onto stage">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+        </div>
+        <div class="emp-card-avatar">${initials}</div>
+        <div class="emp-card-info">
+          <div class="emp-card-name" title="${emp.employee_name}">${emp.employee_name}</div>
+          <div class="emp-card-sub">${emp.employee_id} • ${emp.designation || emp.department || '-'}</div>
+        </div>
+        <span class="emp-source-tag ${emp.source_type}">${emp.source_type}</span>
+      `;
+
+      // HTML5 Drag Events
+      card.addEventListener('dragstart', handleDragStart);
+      card.addEventListener('dragend', handleDragEnd);
+
+      paletteList.appendChild(card);
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Drag & Drop Handlers
+  // -------------------------------------------------------------------------
+  function handleDragStart(e) {
+    this.classList.add('dragging');
+    const empData = {
+      employee_id: this.dataset.empId,
+      employee_name: this.dataset.empName,
+      designation: this.dataset.empDesig,
+      department: this.dataset.empDept,
+      source_type: this.dataset.empSource,
+    };
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/plain', JSON.stringify(empData));
+  }
+
+  function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.wf-drop-zone').forEach(z => z.classList.remove('drag-over'));
+  }
+
+  function handleDropZoneDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    this.classList.add('drag-over');
+  }
+
+  function handleDropZoneDragLeave(e) {
+    this.classList.remove('drag-over');
+  }
+
+  function handleDropZoneDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    const stageId = this.dataset.stageId;
+    try {
+      const dataStr = e.dataTransfer.getData('text/plain');
+      if (!dataStr) return;
+      const empData = JSON.parse(dataStr);
+      if (empData && empData.employee_id) {
+        addApproverToStage(stageId, empData);
+      }
+    } catch (err) {
+      console.error('Failed to parse dropped data', err);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Workflow Loading & Rendering
+  // -------------------------------------------------------------------------
+  async function loadWorkflow(wfId) {
+    setSaveStatus('saving', 'Loading workflow...');
+    try {
+      const res = await fetch(`/admin/approval-workflows/${wfId}/json`);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to load workflow.');
+      }
+
+      currentWorkflowId = data.id;
+      // If flow_data is present and valid, use it; otherwise construct default structure from workflow steps
+      if (data.flow_data && data.flow_data.stages && data.flow_data.stages.length > 0) {
+        activeFlowData = data.flow_data;
+      } else {
+        activeFlowData = constructDefaultFlowData(data.workflow || data);
+      }
+
+      renderCanvas();
+      setSaveStatus('saved', 'All changes saved');
+      isDirty = false;
+    } catch (err) {
+      console.error(err);
+      alert('Error loading workflow: ' + err.message);
+      setSaveStatus('saved', 'Error loading workflow');
+    }
+  }
+
+  function constructDefaultFlowData(wf) {
+    const stages = [];
+    if (wf.steps && wf.steps.length > 0) {
+      wf.steps.forEach((st, idx) => {
+        stages.push({
+          id: `stage-${st.id || idx + 1}`,
+          db_id: st.id,
+          name: st.step_name || (st.is_final ? 'Final Approval' : `Stage ${idx + 1}`),
+          is_final: !!st.is_final,
+          order: st.step_order || (idx + 1),
+          parent_id: st.parent_step_id ? `stage-${st.parent_step_id}` : null,
+          approvers: (st.approvers || []).map(a => {
+            const emp = employeeMap.get(a.employee_id) || {};
+            return {
+              employee_id: a.employee_id,
+              employee_name: a.employee_name || emp.employee_name || a.employee_id,
+              designation: a.designation || emp.designation || '',
+              department: a.department || emp.department || '',
+              source_type: a.source_type || emp.source_type || 'staff',
+              role_label: a.role_label || ''
+            };
+          })
+        });
+      });
+    } else {
+      // Create minimal default: Final Approval node
+      stages.push({
+        id: 'stage-final',
+        name: 'Final Approval (Parent)',
+        is_final: true,
+        order: 1,
+        parent_id: null,
+        approvers: []
+      });
+    }
+    return {
+      workflow_id: wf.id,
+      name: wf.name,
+      code: wf.code,
+      stages: stages
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Render Canvas (Visual Hierarchical Tree Pipeline)
+  // -------------------------------------------------------------------------
+  function renderCanvas() {
+    canvasPipeline.innerHTML = '';
+    if (!activeFlowData || !activeFlowData.stages) return;
+
+    // Separate Final Stage (Top) and Subordinate Stages
+    const stages = [...activeFlowData.stages];
+    const finalStage = stages.find(s => s.is_final) || stages[0];
+    const subStages = stages.filter(s => s !== finalStage);
+
+    // Sort subordinate stages by order ascending (Stage 1 -> Stage 2 -> etc.)
+    subStages.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    // 1. Render Final Parent Stage at Top
+    if (finalStage) {
+      const finalCard = createStageElement(finalStage, true);
+      canvasPipeline.appendChild(finalCard);
+    }
+
+    // 2. Render Subordinate Stages with Hierarchical Flow Connectors
+    subStages.forEach((stg, idx) => {
+      // Connecting arrow pointing upwards towards Parent
+      const connector = document.createElement('div');
+      connector.className = 'wf-connector';
+      connector.innerHTML = `
+        <div class="wf-connector-line"></div>
+        <div class="wf-connector-arrow" title="Submits upward to Next Stage / Final Approver">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </div>
+      `;
+      canvasPipeline.appendChild(connector);
+
+      const stageCard = createStageElement(stg, false);
+      canvasPipeline.appendChild(stageCard);
+    });
+  }
+
+  function createStageElement(stage, isFinal) {
+    const card = document.createElement('div');
+    card.className = `wf-stage-card ${isFinal ? 'is-final-stage' : ''}`;
+    card.dataset.stageId = stage.id;
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'wf-stage-header';
+
+    const headerLeft = document.createElement('div');
+    headerLeft.className = 'stage-header-left';
+
+    const badge = document.createElement('span');
+    badge.className = 'stage-badge-pill';
+    if (isFinal) {
+      badge.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        FINAL APPROVAL (PARENT)
+      `;
+    } else {
+      badge.textContent = `STAGE ${stage.order || 2}`;
+    }
+    headerLeft.appendChild(badge);
+
+    const titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.className = 'stage-title-input';
+    titleInput.value = stage.name || (isFinal ? 'Final Approval' : 'Review Stage');
+    titleInput.title = 'Click to edit stage title';
+    titleInput.addEventListener('input', function() {
+      stage.name = this.value;
+      markDirty();
+    });
+    headerLeft.appendChild(titleInput);
+    header.appendChild(headerLeft);
+
+    const headerRight = document.createElement('div');
+    headerRight.className = 'stage-header-right';
+
+    const ruleTag = document.createElement('span');
+    ruleTag.className = 'stage-rule-tag';
+    ruleTag.textContent = (stage.approvers && stage.approvers.length > 1) ? 'Any Approver' : 'Mandatory';
+    headerRight.appendChild(ruleTag);
+
+    // Delete button (allowed for non-final stages)
+    if (!isFinal) {
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'stage-delete-btn';
+      delBtn.title = 'Delete this stage';
+      delBtn.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      `;
+      delBtn.addEventListener('click', () => deleteStage(stage.id));
+      headerRight.appendChild(delBtn);
+    }
+    header.appendChild(headerRight);
+    card.appendChild(header);
+
+    // Drop Zone
+    const dropZone = document.createElement('div');
+    dropZone.className = 'wf-drop-zone';
+    dropZone.dataset.stageId = stage.id;
+
+    dropZone.addEventListener('dragover', handleDropZoneDragOver);
+    dropZone.addEventListener('dragleave', handleDropZoneDragLeave);
+    dropZone.addEventListener('drop', handleDropZoneDrop);
+
+    // Render assigned approvers
+    const approvers = stage.approvers || [];
+    if (approvers.length === 0) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'drop-placeholder';
+      placeholder.innerHTML = `
+        <span>Drag synced employee here</span>
+        <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign approver</span>
+      `;
+      placeholder.addEventListener('click', () => openAssignModal(stage.id));
+      dropZone.appendChild(placeholder);
+    } else {
+      approvers.forEach(appr => {
+        const chip = document.createElement('div');
+        chip.className = 'approver-chip';
+        chip.dataset.empId = appr.employee_id;
+
+        const initials = (appr.employee_name || 'E').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+
+        chip.innerHTML = `
+          <div class="approver-avatar">${initials}</div>
+          <div class="approver-info">
+            <span class="approver-name">${appr.employee_name}</span>
+            <span class="approver-meta">${appr.employee_id} • ${appr.designation || appr.department || 'Approver'}</span>
+          </div>
+          <button type="button" class="approver-remove-btn" title="Unassign approver">&times;</button>
+        `;
+
+        chip.querySelector('.approver-remove-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeApproverFromStage(stage.id, appr.employee_id);
+        });
+
+        dropZone.appendChild(chip);
+      });
+
+      // Quick add button for adding multiple approvers (many-to-many)
+      const quickAdd = document.createElement('button');
+      quickAdd.type = 'button';
+      quickAdd.className = 'stage-quick-add-btn';
+      quickAdd.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        + Add Approver
+      `;
+      quickAdd.addEventListener('click', () => openAssignModal(stage.id));
+      dropZone.appendChild(quickAdd);
+    }
+
+    card.appendChild(dropZone);
+    return card;
+  }
+
+  // -------------------------------------------------------------------------
+  // Approver Operations
+  // -------------------------------------------------------------------------
+  function addApproverToStage(stageId, empData) {
+    if (!activeFlowData || !activeFlowData.stages) return;
+    const stage = activeFlowData.stages.find(s => s.id === stageId);
+    if (!stage) return;
+
+    if (!stage.approvers) stage.approvers = [];
+
+    // Avoid duplicate approver within the same stage
+    const exists = stage.approvers.some(a => a.employee_id === empData.employee_id);
+    if (exists) {
+      alert(`${empData.employee_name} (${empData.employee_id}) is already an approver in this stage.`);
+      return;
+    }
+
+    // Enrich from full master if possible
+    const masterEmp = employeeMap.get(empData.employee_id) || {};
+    stage.approvers.push({
+      employee_id: empData.employee_id,
+      employee_name: empData.employee_name || masterEmp.employee_name || empData.employee_id,
+      designation: empData.designation || masterEmp.designation || '',
+      department: empData.department || masterEmp.department || '',
+      source_type: empData.source_type || masterEmp.source_type || 'staff',
+      role_label: stage.is_final ? 'Final Approver' : 'Reviewer'
+    });
+
+    markDirty();
+    renderCanvas();
+  }
+
+  function removeApproverFromStage(stageId, empId) {
+    if (!activeFlowData || !activeFlowData.stages) return;
+    const stage = activeFlowData.stages.find(s => s.id === stageId);
+    if (!stage || !stage.approvers) return;
+
+    stage.approvers = stage.approvers.filter(a => a.employee_id !== empId);
+    markDirty();
+    renderCanvas();
+  }
+
+  // -------------------------------------------------------------------------
+  // Stage Operations
+  // -------------------------------------------------------------------------
+  function addStage() {
+    if (!activeFlowData) return;
+    if (!activeFlowData.stages) activeFlowData.stages = [];
+
+    const currentCount = activeFlowData.stages.length;
+    const newStageOrder = currentCount + 1;
+    const newStageId = 'stage-' + Date.now();
+
+    // Final stage ID to serve as parent
+    const finalStage = activeFlowData.stages.find(s => s.is_final);
+    const parentId = finalStage ? finalStage.id : null;
+
+    activeFlowData.stages.push({
+      id: newStageId,
+      name: `Stage ${newStageOrder}: Department Review`,
+      is_final: false,
+      order: newStageOrder,
+      parent_id: parentId,
+      approvers: []
+    });
+
+    markDirty();
+    renderCanvas();
+  }
+
+  function deleteStage(stageId) {
+    if (!activeFlowData || !activeFlowData.stages) return;
+    const stage = activeFlowData.stages.find(s => s.id === stageId);
+    if (!stage || stage.is_final) return;
+
+    if (!confirm(`Delete stage "${stage.name}"?`)) return;
+
+    activeFlowData.stages = activeFlowData.stages.filter(s => s.id !== stageId);
+
+    // Re-index remaining subordinate stage orders
+    let orderIndex = 2;
+    activeFlowData.stages.forEach(s => {
+      if (!s.is_final) {
+        s.order = orderIndex++;
+      }
+    });
+
+    markDirty();
+    renderCanvas();
+  }
+
+  function clearAllApprovers() {
+    if (!activeFlowData || !activeFlowData.stages) return;
+    if (!confirm('Clear all assigned approvers across all stages in this process?')) return;
+
+    activeFlowData.stages.forEach(s => {
+      s.approvers = [];
+    });
+    markDirty();
+    renderCanvas();
+  }
+
+  // -------------------------------------------------------------------------
+  // Save Workflow
+  // -------------------------------------------------------------------------
+  async function saveWorkflow() {
+    if (!currentWorkflowId || !activeFlowData) return;
+
+    setSaveStatus('saving', 'Saving workflow...');
+    btnSaveWf.disabled = true;
+
+    try {
+      const payload = {
+        flow_data: activeFlowData,
+        name: activeFlowData.name,
+        description: activeFlowData.description || ''
+      };
+
+      const res = await fetch(`/admin/approval-workflows/${currentWorkflowId}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to save workflow.');
+      }
+
+      setSaveStatus('saved', 'All changes saved');
+      isDirty = false;
+    } catch (err) {
+      console.error(err);
+      alert('Save failed: ' + err.message);
+      setSaveStatus('unsaved', 'Error saving changes');
+    } finally {
+      btnSaveWf.disabled = false;
+    }
+  }
+
+  function markDirty() {
+    isDirty = true;
+    setSaveStatus('unsaved', 'Unsaved changes');
+  }
+
+  function setSaveStatus(state, msg) {
+    saveStatusPill.className = `wf-save-status ${state}`;
+    statusText.textContent = msg;
+    if (state === 'saving') {
+      saveBtnText.textContent = 'Saving...';
+    } else {
+      saveBtnText.textContent = 'Save Workflow';
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Modals & User Interaction
+  // -------------------------------------------------------------------------
+  function openAssignModal(stageId) {
+    targetStageForModal = stageId;
+    const stage = activeFlowData.stages.find(s => s.id === stageId);
+    document.getElementById('assign-modal-title').textContent = `Assign Approver: ${stage ? stage.name : ''}`;
+    document.getElementById('assign-modal-search').value = '';
+    renderAssignModalList('');
+    modalAssign.classList.add('open');
+  }
+
+  function renderAssignModalList(query) {
+    const list = document.getElementById('assign-quick-list');
+    list.innerHTML = '';
+    const q = (query || '').toLowerCase();
+
+    const filtered = EMPLOYEES.filter(emp => {
+      if (!q) return true;
+      return (emp.employee_name || '').toLowerCase().includes(q) ||
+             (emp.employee_id || '').toLowerCase().includes(q) ||
+             (emp.department || '').toLowerCase().includes(q);
+    }).slice(0, 30); // limit to top 30 for performance
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<p style="text-align:center;color:#8c9eb4;font-size:12px;padding:20px;">No employees match your search.</p>`;
+      return;
+    }
+
+    filtered.forEach(emp => {
+      const item = document.createElement('div');
+      item.className = 'assign-quick-item';
+      item.innerHTML = `
+        <div>
+          <strong style="font-size:13px;color:#12284c;">${emp.employee_name}</strong>
+          <div style="font-size:11px;color:#64748b;">${emp.employee_id} • ${emp.designation || emp.department || '-'}</div>
+        </div>
+        <span class="emp-source-tag ${emp.source_type}">${emp.source_type}</span>
+      `;
+      item.addEventListener('click', () => {
+        if (targetStageForModal) {
+          addApproverToStage(targetStageForModal, emp);
+          modalAssign.classList.remove('open');
+        }
+      });
+      list.appendChild(item);
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Event Bindings
+  // -------------------------------------------------------------------------
+  function bindEvents() {
+    // Process Switcher
+    wfSelect.addEventListener('change', async function() {
+      if (isDirty) {
+        if (!confirm('You have unsaved changes in the current workflow. Discard and switch?')) {
+          this.value = currentWorkflowId;
+          return;
+        }
+      }
+      await loadWorkflow(this.value);
+    });
+
+    // Save Button
+    btnSaveWf.addEventListener('click', saveWorkflow);
+
+    // Add Stage Button
+    btnAddStage.addEventListener('click', addStage);
+
+    // Clear Approvers Button
+    btnClearApprovers.addEventListener('click', clearAllApprovers);
+
+    // Palette Search Input
+    paletteSearch.addEventListener('input', function() {
+      paletteClearSearch.style.display = this.value ? 'block' : 'none';
+      renderPaletteEmployees();
+    });
+    paletteClearSearch.addEventListener('click', function() {
+      paletteSearch.value = '';
+      this.style.display = 'none';
+      renderPaletteEmployees();
+    });
+
+    // Source Filter Pills
+    sourcePills.querySelectorAll('.source-pill').forEach(pill => {
+      pill.addEventListener('click', function() {
+        sourcePills.querySelectorAll('.source-pill').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        renderPaletteEmployees();
+      });
+    });
+
+    // Department Filter
+    paletteDeptFilter.addEventListener('change', renderPaletteEmployees);
+
+    // Modal: Quick Assign Search
+    document.getElementById('assign-modal-search').addEventListener('input', function() {
+      renderAssignModalList(this.value);
+    });
+    document.getElementById('modal-assign-close').addEventListener('click', () => {
+      modalAssign.classList.remove('open');
+    });
+
+    // Modal: New Workflow Process
+    btnNewWf.addEventListener('click', () => {
+      document.getElementById('form-new-wf').reset();
+      modalNewWf.classList.add('open');
+    });
+    document.getElementById('modal-new-wf-close').addEventListener('click', () => {
+      modalNewWf.classList.remove('open');
+    });
+    document.getElementById('modal-new-wf-cancel').addEventListener('click', () => {
+      modalNewWf.classList.remove('open');
+    });
+    document.getElementById('form-new-wf').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const name = document.getElementById('new-wf-name').value.trim();
+      const code = document.getElementById('new-wf-code').value.trim();
+      const description = document.getElementById('new-wf-desc').value.trim();
+      if (!name || !code) return;
+
+      try {
+        const res = await fetch('/admin/approval-workflows/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, code, description })
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) {
+          throw new Error(result.message || 'Creation failed.');
+        }
+
+        // Add to select dropdown
+        const opt = document.createElement('option');
+        opt.value = result.id;
+        opt.textContent = `${result.name} (${result.code})`;
+        wfSelect.appendChild(opt);
+        wfSelect.value = result.id;
+
+        modalNewWf.classList.remove('open');
+        await loadWorkflow(result.id);
+      } catch (err) {
+        alert('Could not create workflow: ' + err.message);
+      }
+    });
+
+    // Modal: Rename Process
+    btnRenameWf.addEventListener('click', () => {
+      if (!currentWorkflowId || !activeFlowData) return;
+      document.getElementById('rename-wf-name').value = activeFlowData.name || '';
+      document.getElementById('rename-wf-desc').value = activeFlowData.description || '';
+      modalRenameWf.classList.add('open');
+    });
+    document.getElementById('modal-rename-wf-close').addEventListener('click', () => {
+      modalRenameWf.classList.remove('open');
+    });
+    document.getElementById('modal-rename-wf-cancel').addEventListener('click', () => {
+      modalRenameWf.classList.remove('open');
+    });
+    document.getElementById('form-rename-wf').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const name = document.getElementById('rename-wf-name').value.trim();
+      const description = document.getElementById('rename-wf-desc').value.trim();
+      if (!name) return;
+
+      try {
+        const res = await fetch(`/admin/approval-workflows/${currentWorkflowId}/rename`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description })
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) {
+          throw new Error(result.message || 'Rename failed.');
+        }
+
+        // Update select option text
+        const opt = wfSelect.querySelector(`option[value="${currentWorkflowId}"]`);
+        if (opt) {
+          opt.textContent = `${name} (${activeFlowData.code || ''})`;
+        }
+        activeFlowData.name = name;
+        activeFlowData.description = description;
+
+        modalRenameWf.classList.remove('open');
+      } catch (err) {
+        alert('Rename failed: ' + err.message);
+      }
+    });
+
+    // Modal: Delete Process
+    btnDeleteWf.addEventListener('click', () => {
+      if (!currentWorkflowId || !activeFlowData) return;
+      document.getElementById('delete-wf-name').textContent = activeFlowData.name;
+      modalDeleteWf.classList.add('open');
+    });
+    document.getElementById('modal-delete-wf-close').addEventListener('click', () => {
+      modalDeleteWf.classList.remove('open');
+    });
+    document.getElementById('modal-delete-wf-cancel').addEventListener('click', () => {
+      modalDeleteWf.classList.remove('open');
+    });
+    document.getElementById('modal-delete-wf-confirm').addEventListener('click', async () => {
+      try {
+        const res = await fetch(`/admin/approval-workflows/${currentWorkflowId}/delete`, {
+          method: 'POST'
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) {
+          throw new Error(result.message || 'Delete failed.');
+        }
+
+        modalDeleteWf.classList.remove('open');
+
+        // Remove from select
+        const opt = wfSelect.querySelector(`option[value="${currentWorkflowId}"]`);
+        if (opt) opt.remove();
+
+        if (wfSelect.options.length > 0) {
+          wfSelect.selectedIndex = 0;
+          await loadWorkflow(wfSelect.value);
+        } else {
+          currentWorkflowId = null;
+          activeFlowData = null;
+          canvasPipeline.innerHTML = `
+            <div style="text-align:center;padding:80px 20px;color:#8c9eb4;">
+              <h3>No Approval Processes Configured</h3>
+              <p>Click <strong>+ New Process</strong> in the top toolbar to create your first approval workflow.</p>
+            </div>
+          `;
+        }
+      } catch (err) {
+        alert('Delete failed: ' + err.message);
+      }
+    });
+
+    // Auto-warn on page unload if changes are unsaved
+    window.addEventListener('beforeunload', function(e) {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  }
+
+})();
+</script>
+{% endblock %}

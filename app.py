@@ -655,23 +655,70 @@ def approval_management():
 @require_admin
 def create_approval_workflow():
     import json as _json
-    name = request.form.get("name", "").strip()
-    code = request.form.get("code", "").strip().upper().replace(" ", "_")
-    description = request.form.get("description", "").strip()
+    payload = request.get_json(silent=True) or request.form
+    name = (payload.get("name") or "").strip()
+    raw_code = (payload.get("code") or "").strip()
+    code = raw_code.lower().replace(" ", "_") if raw_code else name.lower().replace(" ", "_")
+    description = (payload.get("description") or "").strip()
+
     if not name or not code:
         return jsonify({"success": False, "message": "Name and code are required."}), 400
+
     db = SessionLocal()
     try:
         existing = db.query(ApprovalWorkflow).filter(
             (ApprovalWorkflow.name == name) | (ApprovalWorkflow.code == code)
         ).first()
         if existing:
-            return jsonify({"success": False, "message": "A workflow with that name or code already exists."}), 409
-        wf = ApprovalWorkflow(name=name, code=code, description=description, is_active=True, flow_data=None)
+            return jsonify({"success": False, "message": f"A workflow with name '{name}' or code '{code}' already exists."}), 409
+
+        wf = ApprovalWorkflow(
+            name=name,
+            code=code,
+            description=description,
+            is_active=True
+        )
         db.add(wf)
+        db.flush()
+
+        # Seed default top-level Final Approval step
+        final_step = ApprovalWorkflowStep(
+            workflow_id=wf.id,
+            step_order=1,
+            step_name="Final Approval",
+            is_final=True,
+            parent_step_id=None,
+        )
+        db.add(final_step)
+        db.flush()
+
+        initial_flow_data = {
+            "workflow_id": wf.id,
+            "name": wf.name,
+            "code": wf.code,
+            "stages": [
+                {
+                    "id": f"stage-{final_step.id}",
+                    "db_id": final_step.id,
+                    "name": "Final Approval",
+                    "is_final": True,
+                    "order": 1,
+                    "parent_id": None,
+                    "approvers": []
+                }
+            ]
+        }
+        wf.flow_data = _json.dumps(initial_flow_data)
         db.commit()
         db.refresh(wf)
-        return jsonify({"success": True, "id": wf.id, "name": wf.name, "code": wf.code})
+        return jsonify({
+            "success": True,
+            "id": wf.id,
+            "name": wf.name,
+            "code": wf.code,
+            "workflow": wf.to_dict(),
+            "flow_data": initial_flow_data
+        })
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
@@ -688,11 +735,81 @@ def save_approval_workflow(workflow_id):
         wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
         if not wf:
             return jsonify({"success": False, "message": "Workflow not found."}), 404
+
         data = request.get_json(force=True)
-        flow_data = data.get("flow_data")
-        wf.flow_data = _json.dumps(flow_data) if flow_data is not None else None
+        flow_data = data.get("flow_data") or {}
+        stages = flow_data.get("stages", [])
+
+        # Update workflow metadata if provided
+        if "name" in data and data["name"].strip():
+            wf.name = data["name"].strip()
+        if "description" in data:
+            wf.description = data["description"].strip()
+
+        # 1. Clean out existing steps and approvers for complete synchronization
+        db.query(ApprovalWorkflowStep).filter(ApprovalWorkflowStep.workflow_id == workflow_id).delete(synchronize_session=False)
+        db.flush()
+
+        # 2. Re-create steps and build client-id to db-step mapping
+        stage_map = {}
+        for index, stg in enumerate(stages):
+            client_id = str(stg.get("id") or f"stg-{index}")
+            step = ApprovalWorkflowStep(
+                workflow_id=workflow_id,
+                step_order=int(stg.get("order") or (index + 1)),
+                step_name=(stg.get("name") or f"Stage {index + 1}").strip(),
+                is_final=bool(stg.get("is_final", False)),
+                parent_step_id=None,
+            )
+            db.add(step)
+            db.flush()
+            stage_map[client_id] = step
+            stg["db_id"] = step.id
+
+        # 3. Resolve parent_step_id hierarchy
+        for stg in stages:
+            client_id = str(stg.get("id"))
+            parent_client_id = stg.get("parent_id")
+            if parent_client_id and str(parent_client_id) in stage_map:
+                stage_map[client_id].parent_step_id = stage_map[str(parent_client_id)].id
+
+        # 4. Create approver assignments (many-to-many junction)
+        for stg in stages:
+            client_id = str(stg.get("id"))
+            step_record = stage_map.get(client_id)
+            if not step_record:
+                continue
+
+            approver_list = stg.get("approvers", [])
+            seen_emp_ids = set()
+            for appr in approver_list:
+                emp_id = (appr.get("employee_id") or "").strip()
+                if not emp_id or emp_id in seen_emp_ids:
+                    continue
+                seen_emp_ids.add(emp_id)
+
+                # Verify employee exists in DB
+                emp_exists = db.query(Employee).filter(Employee.employee_id == emp_id).first()
+                if not emp_exists:
+                    continue
+
+                assignment = ApprovalStepApprover(
+                    step_id=step_record.id,
+                    employee_id=emp_id,
+                    role_label=(appr.get("role_label") or "").strip() or None
+                )
+                db.add(assignment)
+
+        # 5. Persist visual flow_data JSON
+        wf.flow_data = _json.dumps(flow_data)
         db.commit()
-        return jsonify({"success": True})
+        db.refresh(wf)
+
+        return jsonify({
+            "success": True,
+            "message": f"Workflow '{wf.name}' saved successfully.",
+            "workflow": wf.to_dict()
+        })
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
@@ -708,10 +825,18 @@ def get_approval_workflow_json(workflow_id):
     try:
         wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
         if not wf:
-            return jsonify({"success": False, "message": "Not found."}), 404
+            return jsonify({"success": False, "message": "Workflow not found."}), 404
         flow_data = _json.loads(wf.flow_data) if wf.flow_data else None
-        return jsonify({"success": True, "id": wf.id, "name": wf.name, "code": wf.code,
-                        "description": wf.description, "flow_data": flow_data})
+        return jsonify({
+            "success": True,
+            "id": wf.id,
+            "name": wf.name,
+            "code": wf.code,
+            "description": wf.description or "",
+            "is_active": wf.is_active,
+            "flow_data": flow_data,
+            "workflow": wf.to_dict()
+        })
     finally:
         db.close()
 
@@ -723,10 +848,11 @@ def delete_approval_workflow(workflow_id):
     try:
         wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
         if not wf:
-            return jsonify({"success": False, "message": "Not found."}), 404
+            return jsonify({"success": False, "message": "Workflow not found."}), 404
+        workflow_name = wf.name
         db.delete(wf)
         db.commit()
-        return jsonify({"success": True})
+        return jsonify({"success": True, "message": f"Workflow '{workflow_name}' deleted successfully."})
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
@@ -737,19 +863,39 @@ def delete_approval_workflow(workflow_id):
 @app.route("/admin/approval-workflows/<int:workflow_id>/rename", methods=["POST"])
 @require_admin
 def rename_approval_workflow(workflow_id):
+    import json as _json
+    payload = request.get_json(silent=True) or request.form
+    new_name = (payload.get("name") or "").strip()
+    new_description = (payload.get("description") or "").strip()
+    if not new_name:
+        return jsonify({"success": False, "message": "Workflow name cannot be empty."}), 400
+
     db = SessionLocal()
     try:
         wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
         if not wf:
-            return jsonify({"success": False, "message": "Not found."}), 404
-        data = request.get_json(force=True)
-        new_name = (data.get("name") or "").strip()
-        if not new_name:
-            return jsonify({"success": False, "message": "Name is required."}), 400
+            return jsonify({"success": False, "message": "Workflow not found."}), 404
+
+        # Check duplicate name
+        dup = db.query(ApprovalWorkflow).filter(
+            ApprovalWorkflow.name == new_name,
+            ApprovalWorkflow.id != workflow_id
+        ).first()
+        if dup:
+            return jsonify({"success": False, "message": f"Another workflow named '{new_name}' already exists."}), 409
+
         wf.name = new_name
-        wf.description = (data.get("description") or "").strip()
+        wf.description = new_description
+        if wf.flow_data:
+            try:
+                fd = _json.loads(wf.flow_data)
+                fd["name"] = new_name
+                wf.flow_data = _json.dumps(fd)
+            except Exception:
+                pass
+
         db.commit()
-        return jsonify({"success": True})
+        return jsonify({"success": True, "message": "Workflow renamed successfully.", "name": wf.name})
     except Exception as e:
         db.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
