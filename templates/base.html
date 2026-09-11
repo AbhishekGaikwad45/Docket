@@ -1315,6 +1315,10 @@
          href="{{ url_for('admin_module') }}">
         <span class="nav-dot"></span>User Management
       </a>
+      <a class="nav-item {% if active=='approvals_mgmt' %}active{% endif %}"
+         href="{{ url_for('approval_management') }}">
+        <span class="nav-dot"></span>Approval Management
+      </a>
     {% else %}
       <a class="nav-item {% if active=='dashboard' %}active{% endif %}"
          href="{{ url_for('dashboard') }}">

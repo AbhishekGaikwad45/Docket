@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 
 from config import Config
 from database import SessionLocal, close_db_session, init_db_defaults
-from modules.models import User, Employee, GuestHouseRequest
+from modules.models import User, Employee, GuestHouseRequest, ApprovalWorkflow, ApprovalWorkflowStep, ApprovalStepApprover
 from sync_service import sync_employees
 from mail_service import send_otp_email, send_request_outcome_email
 
@@ -610,10 +610,158 @@ def submit_guest_house():
     return redirect(url_for("admin_module"))
 
 
+
+# ---------------------------------------------------------------------------
+# Approval Management Module (Admin)
+# ---------------------------------------------------------------------------
+@app.route("/admin/approval-management")
+@require_admin
+def approval_management():
+    db = SessionLocal()
+    try:
+        workflows = db.query(ApprovalWorkflow).order_by(ApprovalWorkflow.id).all()
+        employees = db.query(Employee).order_by(Employee.employee_name).all()
+        workflows_data = []
+        for wf in workflows:
+            workflows_data.append({
+                "id": wf.id,
+                "name": wf.name,
+                "code": wf.code,
+                "description": wf.description or "",
+                "is_active": wf.is_active,
+                "flow_data": wf.flow_data or "null",
+            })
+        employees_data = []
+        for emp in employees:
+            employees_data.append({
+                "employee_id": emp.employee_id,
+                "employee_name": emp.employee_name or "",
+                "designation": emp.designation or "",
+                "department": emp.department or "",
+                "email_id": emp.email_id or "",
+                "source_type": emp.source_type,
+            })
+        return render_template(
+            "approval_management.html",
+            active="approvals_mgmt",
+            workflows=workflows_data,
+            employees=employees_data,
+        )
+    finally:
+        db.close()
+
+
+@app.route("/admin/approval-workflows/create", methods=["POST"])
+@require_admin
+def create_approval_workflow():
+    import json as _json
+    name = request.form.get("name", "").strip()
+    code = request.form.get("code", "").strip().upper().replace(" ", "_")
+    description = request.form.get("description", "").strip()
+    if not name or not code:
+        return jsonify({"success": False, "message": "Name and code are required."}), 400
+    db = SessionLocal()
+    try:
+        existing = db.query(ApprovalWorkflow).filter(
+            (ApprovalWorkflow.name == name) | (ApprovalWorkflow.code == code)
+        ).first()
+        if existing:
+            return jsonify({"success": False, "message": "A workflow with that name or code already exists."}), 409
+        wf = ApprovalWorkflow(name=name, code=code, description=description, is_active=True, flow_data=None)
+        db.add(wf)
+        db.commit()
+        db.refresh(wf)
+        return jsonify({"success": True, "id": wf.id, "name": wf.name, "code": wf.code})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route("/admin/approval-workflows/<int:workflow_id>/save", methods=["POST"])
+@require_admin
+def save_approval_workflow(workflow_id):
+    import json as _json
+    db = SessionLocal()
+    try:
+        wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
+        if not wf:
+            return jsonify({"success": False, "message": "Workflow not found."}), 404
+        data = request.get_json(force=True)
+        flow_data = data.get("flow_data")
+        wf.flow_data = _json.dumps(flow_data) if flow_data is not None else None
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route("/admin/approval-workflows/<int:workflow_id>/json", methods=["GET"])
+@require_admin
+def get_approval_workflow_json(workflow_id):
+    import json as _json
+    db = SessionLocal()
+    try:
+        wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
+        if not wf:
+            return jsonify({"success": False, "message": "Not found."}), 404
+        flow_data = _json.loads(wf.flow_data) if wf.flow_data else None
+        return jsonify({"success": True, "id": wf.id, "name": wf.name, "code": wf.code,
+                        "description": wf.description, "flow_data": flow_data})
+    finally:
+        db.close()
+
+
+@app.route("/admin/approval-workflows/<int:workflow_id>/delete", methods=["POST"])
+@require_admin
+def delete_approval_workflow(workflow_id):
+    db = SessionLocal()
+    try:
+        wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
+        if not wf:
+            return jsonify({"success": False, "message": "Not found."}), 404
+        db.delete(wf)
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route("/admin/approval-workflows/<int:workflow_id>/rename", methods=["POST"])
+@require_admin
+def rename_approval_workflow(workflow_id):
+    db = SessionLocal()
+    try:
+        wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
+        if not wf:
+            return jsonify({"success": False, "message": "Not found."}), 404
+        data = request.get_json(force=True)
+        new_name = (data.get("name") or "").strip()
+        if not new_name:
+            return jsonify({"success": False, "message": "Name is required."}), 400
+        wf.name = new_name
+        wf.description = (data.get("description") or "").strip()
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        db.close()
+
+
 # ---------------------------------------------------------------------------
 # Approvals
 # ---------------------------------------------------------------------------
 @app.route("/approvals")
+
 def approvals():
     if session.get("is_admin"):
         return redirect(url_for("admin_module"))

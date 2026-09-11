@@ -5,6 +5,7 @@ Contains all SQLAlchemy declarative models.
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 
 
@@ -132,4 +133,114 @@ class GuestHouseRequest(Base):
         return f"<GuestHouseRequest id={self.id} guest='{self.guest}' stage='{self.stage}'>"
 
 
-__all__ = ["Base", "User", "Employee", "GuestHouseRequest"]
+class ApprovalWorkflow(Base):
+    __tablename__ = "approval_workflows"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(150), unique=True, nullable=False, index=True)
+    code = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    flow_data = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    steps = relationship(
+        "ApprovalWorkflowStep",
+        backref="workflow",
+        cascade="all, delete-orphan",
+        order_by="ApprovalWorkflowStep.step_order.asc()",
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "code": self.code,
+            "description": self.description or "",
+            "is_active": self.is_active,
+            "flow_data": self.flow_data or "",
+            "steps": [s.to_dict() for s in self.steps],
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M") if self.created_at else None,
+            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M") if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f"<ApprovalWorkflow id={self.id} name='{self.name}'>"
+
+
+class ApprovalWorkflowStep(Base):
+    __tablename__ = "approval_workflow_steps"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    workflow_id = Column(Integer, ForeignKey("approval_workflows.id", ondelete="CASCADE"), nullable=False, index=True)
+    step_order = Column(Integer, default=1, nullable=False)
+    step_name = Column(String(150), nullable=False)
+    is_final = Column(Boolean, default=False, nullable=False)
+    parent_step_id = Column(Integer, ForeignKey("approval_workflow_steps.id", ondelete="SET NULL"), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    approvers = relationship(
+        "ApprovalStepApprover",
+        backref="step",
+        cascade="all, delete-orphan",
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "workflow_id": self.workflow_id,
+            "step_order": self.step_order,
+            "step_name": self.step_name,
+            "is_final": self.is_final,
+            "parent_step_id": self.parent_step_id,
+            "approvers": [a.to_dict() for a in self.approvers],
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M") if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f"<ApprovalWorkflowStep id={self.id} name='{self.step_name}' order={self.step_order}>"
+
+
+class ApprovalStepApprover(Base):
+    __tablename__ = "approval_step_approvers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    step_id = Column(Integer, ForeignKey("approval_workflow_steps.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(String(50), ForeignKey("employees.employee_id", ondelete="CASCADE"), nullable=False, index=True)
+    role_label = Column(String(100), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    employee = relationship("Employee", lazy="joined")
+
+    def to_dict(self):
+        emp_data = self.employee.to_dict() if self.employee else {}
+        return {
+            "id": self.id,
+            "step_id": self.step_id,
+            "employee_id": self.employee_id,
+            "role_label": self.role_label or "",
+            "employee_name": emp_data.get("employee_name", self.employee_id),
+            "designation": emp_data.get("designation", ""),
+            "department": emp_data.get("department", ""),
+            "email_id": emp_data.get("email_id", ""),
+            "source_type": emp_data.get("source_type", "staff"),
+        }
+
+    def __repr__(self):
+        return f"<ApprovalStepApprover id={self.id} step_id={self.step_id} emp_id='{self.employee_id}'>"
+
+
+__all__ = [
+    "Base",
+    "User",
+    "Employee",
+    "GuestHouseRequest",
+    "ApprovalWorkflow",
+    "ApprovalWorkflowStep",
+    "ApprovalStepApprover",
+]
