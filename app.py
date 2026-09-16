@@ -572,6 +572,121 @@ def update_employee_email(employee_id):
         db.close()
 
 
+def get_designation_seniority(designation: str) -> tuple[int, str]:
+    """Return a seniority rank and tier label for an employee designation."""
+    if not designation:
+        return (15, "Support Staff & Other Designations")
+
+    normalized = designation.upper().strip()
+    if any(term in normalized for term in ("VICE PRESIDENT", "UNIT HEAD", "ASSOCIATE VICE PRESIDENT")):
+        return (1, "Head / Executive Leadership")
+    if "GENERAL MANAGER" in normalized and not any(term in normalized for term in ("DEPUTY", "DY", "ASST", "ASSISTANT")):
+        return (2, "General Manager")
+    if any(term in normalized for term in ("DEPUTY GENERAL MANAGER", "ASSISTANT GENERAL MANAGER", "DGM", "DY. GENERAL MANAGER", "DY GENERAL MANAGER", "ASST GENERAL MANAGER", "ASST. GENERAL MANAGER")):
+        return (3, "Deputy / Assistant General Manager")
+    if any(term in normalized for term in ("SENIOR MANAGER", "SR.MANAGER", "SR. MANAGER", "SR MANAGER")):
+        return (4, "Senior Manager")
+    if any(term in normalized for term in ("MANAGER", "SITE INCHARGE", "LEAD", "OWNER")) and not any(term in normalized for term in ("DEPUTY", "DY", "ASST", "ASSISTANT", "JR", "JUNIOR")):
+        return (5, "Manager")
+    if any(term in normalized for term in ("DEPUTY MANAGER", "DY. MANAGER", "DY MANAGER", "JR.MANAGER", "JR. MANAGER", "JR MANAGER")):
+        return (6, "Deputy / Junior Manager")
+    if any(term in normalized for term in ("ASSISTANT MANAGER", "ASST. MANAGER", "ASST MANAGER")):
+        return (7, "Assistant Manager")
+    if any(term in normalized for term in ("SENIOR ENGINEER", "SR. ENGINEER", "SR.ENGINEER", "SR ENGINEER", "SENIOR OFFICER", "SR. OFFICER", "SR.OFFICER", "SR OFFICER", "HR &ADMIN OFFICER", "HR & ADMIN OFFICER", "ACCOUNTANT")):
+        return (8, "Senior Executive / Officer / Accountant")
+    if ("ENGINEER" in normalized or "OFFICER" in normalized) and not any(term in normalized for term in ("ASST", "ASSISTANT", "JR", "JUNIOR", "GET", "TRAINEE", "SENIOR", "SR")):
+        return (9, "Executive / Officer / Engineer")
+    if any(term in normalized for term in ("ASSISTANT ENGINEER", "ASST. ENGINEER", "ASST ENGINEER", "ASSISTANT OFFICER", "ASST. OFFICER", "ASST OFFICER", "ASSISTANT ADMIN", "ASST. ADMIN", "ASST ADMIN")):
+        return (10, "Assistant Officer / Engineer / Admin")
+    if any(term in normalized for term in ("JUNIOR", "JR.", "JR ", "GET", "GRADUATE ENGINEER TRAINEE", "TRAINEE")):
+        return (11, "Junior Officer / Junior Engineer / Trainee")
+    if any(term in normalized for term in ("SUPERVISOR", "FOREMAN")):
+        return (12, "Supervisor / Foreman")
+    if any(term in normalized for term in ("ASSISTANT", "RECEPTIONIST")):
+        return (13, "Assistant / Staff")
+    if any(term in normalized for term in ("TECHNICIAN", "ELECTRICIAN", "MECHANIC", "FITTER", "WELDER", "OPERATOR", "RIGGER", "CARPENTER", "PLUMBER", "MASION", "TECHNICAL")):
+        return (14, "Technical & Skilled Trades")
+    return (15, "Support Staff & Other Designations")
+
+
+@app.route("/api/department-hierarchy", methods=["GET"])
+@require_admin
+def get_department_hierarchy():
+    hod_id = (request.args.get("hod_id") or "").strip()
+    department = (request.args.get("department") or "").strip()
+
+    db = SessionLocal()
+    try:
+        hod_employee = None
+        if hod_id:
+            hod_employee = db.query(Employee).filter(Employee.employee_id == hod_id).first()
+            if not hod_employee:
+                return jsonify({"success": False, "message": f"Employee '{hod_id}' not found."}), 404
+            department = department or (hod_employee.department or "").strip()
+
+        if not department:
+            return jsonify({
+                "success": False,
+                "message": "Department could not be detected. The selected employee has no assigned department."
+            }), 400
+
+        query = db.query(Employee).filter(
+            Employee.department == department,
+            Employee.employee_status.ilike("active")
+        )
+        if hod_id:
+            query = query.filter(Employee.employee_id != hod_id)
+        department_employees = query.all()
+
+        hod_rank = get_designation_seniority(hod_employee.designation)[0] if hod_employee else 0
+        grouped = {}
+        for employee in department_employees:
+            designation = (employee.designation or "").strip() or "General Staff"
+            rank, tier_name = get_designation_seniority(designation)
+            if hod_rank and rank < hod_rank:
+                continue
+
+            key = (rank, designation.upper())
+            grouped.setdefault(key, {
+                "rank": rank,
+                "tier_name": tier_name,
+                "designation": designation,
+                "employees": [],
+            })["employees"].append({
+                "employee_id": employee.employee_id,
+                "employee_name": employee.employee_name or employee.employee_id,
+                "designation": employee.designation or "",
+                "department": employee.department or department,
+                "email_id": employee.email_id or "",
+                "source_type": employee.source_type,
+            })
+
+        hierarchy_levels = []
+        for index, item in enumerate(sorted(grouped.values(), key=lambda value: (value["rank"], value["designation"].upper())), start=1):
+            hierarchy_levels.append({
+                "level_order": index,
+                "rank": item["rank"],
+                "tier_name": item["tier_name"],
+                "designation": item["designation"],
+                "stage_name": f"{item['designation'].title()} Review",
+                "employees": sorted(item["employees"], key=lambda employee: employee["employee_name"]),
+                "count": len(item["employees"]),
+            })
+
+        return jsonify({
+            "success": True,
+            "department": department,
+            "hod": hod_employee.to_dict() if hod_employee else None,
+            "total_active_subordinates": len(department_employees),
+            "hierarchy_levels": hierarchy_levels,
+        })
+    except Exception as error:
+        app.logger.exception("Unable to generate department hierarchy")
+        return jsonify({"success": False, "message": str(error)}), 500
+    finally:
+        db.close()
+
+
 @app.route("/department/admin/submit", methods=["POST"])
 @require_admin
 def submit_guest_house():
