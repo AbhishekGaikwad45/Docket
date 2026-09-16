@@ -1140,10 +1140,11 @@ def get_department_hierarchy():
                 "message": "Department could not be detected. The selected employee has no assigned department."
             }), 400
 
-        # Query all active employees in this department
+        # Query all active employees in this department (exclude associates)
         query = db.query(Employee).filter(
             Employee.department == dept,
-            Employee.employee_status.ilike("active")
+            Employee.employee_status.ilike("active"),
+            Employee.source_view == "view_EmployeeMaster_Report_Staff"
         )
         if hod_id:
             query = query.filter(Employee.employee_id != hod_id)
@@ -1152,8 +1153,8 @@ def get_department_hierarchy():
 
         hod_rank = get_designation_seniority(hod_emp.designation)[0] if hod_emp else 0
 
-        # Group by designation & seniority
-        grouped = {}
+        # Group all valid subordinates into a single level
+        employees_list = []
         for emp in dept_emps:
             desig = (emp.designation or "").strip() or "General Staff"
             rank, tier_name = get_designation_seniority(desig)
@@ -1162,15 +1163,7 @@ def get_department_hierarchy():
             if hod_rank and rank < hod_rank:
                 continue
 
-            key = (rank, desig.upper())
-            if key not in grouped:
-                grouped[key] = {
-                    "rank": rank,
-                    "tier_name": tier_name,
-                    "designation": desig,
-                    "employees": []
-                }
-            grouped[key]["employees"].append({
+            employees_list.append({
                 "employee_id": emp.employee_id,
                 "employee_name": emp.employee_name or emp.employee_id,
                 "designation": emp.designation or "",
@@ -1179,20 +1172,16 @@ def get_department_hierarchy():
                 "source_type": emp.source_type,
             })
 
-        # Sort levels from highest seniority (lowest rank number) to lowest seniority (highest rank number)
-        sorted_keys = sorted(grouped.keys(), key=lambda k: (k[0], k[1]))
         hierarchy_levels = []
-        for idx, k in enumerate(sorted_keys):
-            item = grouped[k]
-            desig_title = item["designation"].title()
+        if employees_list:
             hierarchy_levels.append({
-                "level_order": idx + 1,
-                "rank": item["rank"],
-                "tier_name": item["tier_name"],
-                "designation": item["designation"],
-                "stage_name": f"{desig_title} Review",
-                "employees": sorted(item["employees"], key=lambda x: x["employee_name"]),
-                "count": len(item["employees"]),
+                "level_order": 1,
+                "rank": 99,
+                "tier_name": "Department Staff",
+                "designation": "Multiple Designations",
+                "stage_name": "Department Staff",
+                "employees": sorted(employees_list, key=lambda x: x["employee_name"]),
+                "count": len(employees_list),
             })
 
         return jsonify({
@@ -1295,4 +1284,4 @@ def sync_employees_route():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5050)

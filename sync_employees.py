@@ -34,8 +34,8 @@ def main():
 
     args = parser.parse_args()
 
-    include_staff = not args.assoc_only
-    include_associates = not args.staff_only
+    include_staff = True
+    include_associates = False # Disabled as per request
 
     print("=" * 65)
     print("  DOCKET - EMPLOYEE MASTER SYNCHRONIZATION")

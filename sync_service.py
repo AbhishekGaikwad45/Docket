@@ -76,11 +76,15 @@ def fetch_from_sql_server(view_name: str, active_only: bool = False) -> List[Dic
             if email:
                 email = email.lower()
 
+            dept = _clean_str(row[idx_dept]) if idx_dept is not None else None
+            if dept and dept.upper() == "IT":
+                dept = "Information Technology"
+
             employees.append({
                 "employee_id": emp_id,
                 "employee_name": emp_name,
                 "designation": _clean_str(row[idx_desig]) if idx_desig is not None else None,
-                "department": _clean_str(row[idx_dept]) if idx_dept is not None else None,
+                "department": dept,
                 "email_id": email,
                 "employee_status": _clean_str(row[idx_status]) if idx_status is not None else "Active",
                 "contact_no": _clean_str(row[idx_contact]) if idx_contact is not None else None,
@@ -151,7 +155,7 @@ def upsert_employees_to_postgres(records: List[Dict[str, Any]], batch_size: int 
         session.close()
 
 
-def sync_employees(include_staff: bool = True, include_associates: bool = True, active_only: bool = False) -> Dict[str, Any]:
+def sync_employees(include_staff: bool = True, include_associates: bool = False, active_only: bool = False) -> Dict[str, Any]:
     """
     Main entry point for syncing employee data from MS SQL Server to PostgreSQL.
     """
