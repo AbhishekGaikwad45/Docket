@@ -245,36 +245,70 @@
      STYLES
      ========================================================================= -->
 <style>
-  /* Base Layout */
+  /* =========================================================================
+     PAGE & BASE OVERRIDES FOR RESPONSIVE CANVAS DESIGNER
+     ========================================================================= */
+  /* Allow workflow builder to utilize available screen width and prevent window horizontal scroll */
+  .content {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 20px 24px 44px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  body, #app-shell, .main {
+    overflow-x: hidden;
+  }
+
+  /* Base Container */
   .wf-container {
-    max-width: 1480px;
+    width: 100%;
+    max-width: 1720px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
+    box-sizing: border-box;
+    min-width: 0;
   }
 
-  /* Toolbar */
+  /* =========================================================================
+     TOP TOOLBAR: RESPONSIVE CONTROLS
+     ========================================================================= */
   .wf-toolbar {
     background: #ffffff;
     border: 1px solid #dce5f0;
     border-radius: 16px;
-    padding: 20px 26px;
+    padding: 18px 24px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 18px;
+    gap: 16px;
     box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
   }
 
   .wf-toolbar-left {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    flex: 1 1 480px;
+    min-width: 0;
+  }
+
+  .wf-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
   }
 
   .wf-badge {
+    align-self: flex-start;
     display: inline-block;
     padding: 3px 9px;
     font-size: 10.5px;
@@ -283,41 +317,52 @@
     background: #edf5fe;
     border-radius: 6px;
     letter-spacing: 0.8px;
+    line-height: 1.3;
   }
 
   .wf-title {
     margin: 0;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 800;
     color: #112753;
     letter-spacing: -0.4px;
+    line-height: 1.25;
+    word-break: break-word;
   }
 
   .wf-subtitle {
-    margin: 2px 0 0;
-    font-size: 13.5px;
+    margin: 0;
+    font-size: 13px;
     color: #627591;
+    line-height: 1.4;
+    word-break: break-word;
   }
 
   .wf-selector-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px 10px;
     flex-wrap: wrap;
-    margin-top: 4px;
+    margin-top: 2px;
+    min-width: 0;
   }
 
   .wf-label {
     font-size: 13px;
     font-weight: 700;
     color: #3b4d6b;
+    white-space: nowrap;
   }
 
   .wf-select-box {
     position: relative;
+    flex: 1 1 200px;
+    min-width: 150px;
+    max-width: 360px;
   }
 
   .wf-select {
+    width: 100%;
     height: 38px;
     padding: 0 32px 0 12px;
     border: 1px solid #c9d7e7;
@@ -329,6 +374,10 @@
     cursor: pointer;
     outline: none;
     transition: all .15s;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    box-sizing: border-box;
   }
   .wf-select:focus {
     border-color: #0756b9;
@@ -338,14 +387,16 @@
   .wf-toolbar-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px 10px;
     flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   /* Buttons */
   .wf-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 7px;
     height: 38px;
     padding: 0 14px;
@@ -357,6 +408,7 @@
     border: 1px solid transparent;
     text-decoration: none;
     white-space: nowrap;
+    box-sizing: border-box;
   }
   .wf-btn:active {
     transform: scale(0.98);
@@ -420,6 +472,8 @@
     background: #eef7ee;
     color: #1e7e34;
     border: 1px solid #d1edd5;
+    white-space: nowrap;
+    box-sizing: border-box;
   }
   .wf-save-status.unsaved {
     background: #fff8e8;
@@ -436,52 +490,166 @@
     height: 7px;
     border-radius: 50%;
     background: currentColor;
+    flex-shrink: 0;
   }
 
-  /* Workspace Layout */
+  /* =========================================================================
+     WORKSPACE GRID: RESPONSIVE FOR BIG, MEDIUM, AND SMALL SCREENS
+     ========================================================================= */
   .wf-workspace {
     display: grid;
-    grid-template-columns: 1fr 390px;
-    gap: 22px;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 20px;
     align-items: start;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
-  @media (max-width: 1100px) {
+
+  /* Big screens (≥ 1440px) */
+  @media (min-width: 1440px) {
     .wf-workspace {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 24px;
     }
   }
 
-  /* Canvas Area */
+  /* Medium screens (992px to 1279px) */
+  @media (max-width: 1279px) and (min-width: 992px) {
+    .wf-workspace {
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+    }
+    .wf-toolbar {
+      padding: 16px 20px;
+    }
+  }
+
+  /* Tablets & Small screens (< 992px) */
+  @media (max-width: 991px) {
+    .wf-workspace {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 20px;
+    }
+    .wf-palette-sidebar {
+      position: static !important;
+      height: auto !important;
+      max-height: 520px;
+      order: 2;
+    }
+    .wf-toolbar-right {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+  /* Mobile devices (< 768px) */
+  @media (max-width: 767px) {
+    .content {
+      padding: 12px 10px 32px !important;
+    }
+    .wf-container {
+      gap: 14px;
+    }
+    .wf-toolbar {
+      padding: 14px 14px;
+      gap: 12px;
+      border-radius: 12px;
+    }
+    .wf-title {
+      font-size: 19px;
+    }
+    .wf-subtitle {
+      font-size: 12px;
+    }
+    .wf-selector-wrap {
+      width: 100%;
+    }
+    .wf-select-box {
+      flex: 1 1 100%;
+      max-width: 100%;
+    }
+    .wf-toolbar-right {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .wf-toolbar-right .wf-btn {
+      flex: 1 1 calc(50% - 6px);
+      padding: 0 10px;
+      font-size: 12px;
+      height: 36px;
+    }
+    .wf-toolbar-right #btn-save-wf {
+      flex: 1 1 100%;
+    }
+    .wf-save-status {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  /* =========================================================================
+     CANVAS AREA & HEADER
+     ========================================================================= */
   .wf-canvas-area {
     background: #ffffff;
     border: 1px solid #dce5f0;
     border-radius: 18px;
-    padding: 28px 30px 40px;
-    min-height: 680px;
+    padding: 24px 26px 40px;
+    min-height: 600px;
     box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
     position: relative;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 767px) {
+    .wf-canvas-area {
+      padding: 16px 12px 28px;
+      border-radius: 14px;
+      min-height: 460px;
+    }
   }
 
   .canvas-header-bar {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 20px;
-    margin-bottom: 30px;
+    gap: 10px 16px;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
     border-bottom: 1px dashed #e2ebf4;
+    min-width: 0;
+  }
+
+  .canvas-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    flex: 1 1 280px;
+    min-width: 0;
   }
 
   .canvas-meta .meta-label {
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 800;
     color: #0756b9;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-right: 6px;
+    margin-right: 4px;
+    white-space: nowrap;
   }
   .canvas-meta .meta-desc {
-    font-size: 12.5px;
+    font-size: 12px;
     color: #71829d;
+    line-height: 1.35;
   }
 
   .btn-text-sm {
@@ -492,33 +660,57 @@
     font-weight: 600;
     cursor: pointer;
     text-decoration: underline;
+    white-space: nowrap;
   }
   .btn-text-sm:hover {
     color: #dc2626;
   }
 
-  /* Hierarchical Workflow Tree Pipeline */
+  /* =========================================================================
+     HIERARCHICAL ORGANOGRAM TREE PIPELINE
+     ========================================================================= */
   .wf-tree-pipeline {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0;
-    max-width: 780px;
+    width: 100%;
+    max-width: 100%;
     margin: 0 auto;
+    box-sizing: border-box;
+    min-width: 0;
   }
 
-  /* Hierarchical Connector */
+  /* Top Trunk: Stage 1 & Stage 2 */
+  .wf-organogram-trunk {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 620px;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+
+  @media (max-width: 680px) {
+    .wf-organogram-trunk {
+      max-width: 100%;
+    }
+  }
+
+  /* Hierarchical Vertical Connectors */
   .wf-connector {
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 48px;
+    height: 38px;
     position: relative;
+    width: 24px;
   }
   .wf-connector-line {
     width: 3px;
     height: 100%;
-    background: linear-gradient(180deg, #0756b9 0%, #a8c8ee 100%);
+    background: linear-gradient(180deg, #1e40af 0%, #7c3aed 100%);
     border-radius: 2px;
   }
   .wf-connector-arrow {
@@ -526,8 +718,8 @@
     top: 50%;
     transform: translateY(-50%);
     background: #ffffff;
-    border: 2px solid #0756b9;
-    color: #0756b9;
+    border: 2px solid #7c3aed;
+    color: #7c3aed;
     width: 22px;
     height: 22px;
     border-radius: 50%;
@@ -535,10 +727,155 @@
     align-items: center;
     justify-content: center;
     font-size: 11px;
-    box-shadow: 0 2px 6px rgba(7, 86, 185, 0.15);
+    box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
   }
 
-  /* Stage Nodes (Cards) */
+  /* Tree Branch Split Section */
+  .wf-tree-split-section {
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 0;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .wf-trunk-connector {
+    width: 3px;
+    height: 34px;
+    background: linear-gradient(180deg, #7c3aed 0%, #10b981 100%);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .wf-trunk-connector::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #10b981;
+  }
+
+  /* Branch Bar Visual Splitter */
+  .wf-branch-bar-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+  .wf-branch-bar-line {
+    height: 3px;
+    background: #10b981;
+    border-radius: 2px;
+    transition: all .2s;
+  }
+
+  /* =========================================================================
+     HORIZONTAL BRANCHES CONTAINER: SAFE SCROLLING (PREVENTS NEGATIVE CLIPPING)
+     ========================================================================= */
+  .wf-branches-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 16px 36px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @supports (justify-content: safe center) {
+    .wf-branches-container {
+      justify-content: safe center;
+    }
+  }
+
+  /* Custom styled scrollbars for horizontal branches */
+  .wf-branches-container::-webkit-scrollbar {
+    height: 7px;
+  }
+  .wf-branches-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 8px;
+  }
+  .wf-branches-container::-webkit-scrollbar-thumb {
+    background: #c1d2e5;
+    border-radius: 8px;
+  }
+  .wf-branches-container::-webkit-scrollbar-thumb:hover {
+    background: #9ab3ce;
+  }
+
+  /* Department Column Branch */
+  .wf-dept-branch {
+    flex: 0 0 320px;
+    width: 320px;
+    max-width: calc(100vw - 64px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 480px) {
+    .wf-dept-branch {
+      flex: 0 0 285px;
+      width: 285px;
+      max-width: calc(100vw - 44px);
+    }
+  }
+
+  /* Vertical stem from horizontal branch bar into HOD card */
+  .wf-branch-stem {
+    width: 3px;
+    height: 28px;
+    background: #10b981;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .wf-branch-stem::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #10b981;
+  }
+
+  .wf-sub-connector {
+    width: 2px;
+    height: 24px;
+    background: #cbd5e1;
+    position: relative;
+    margin: 2px 0;
+    flex-shrink: 0;
+  }
+  .wf-sub-connector::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background: #94a3b8;
+    border-radius: 50%;
+  }
+
+  /* =========================================================================
+     STAGE NODES (CARDS)
+     ========================================================================= */
   .wf-stage-card {
     width: 100%;
     background: #ffffff;
@@ -548,27 +885,191 @@
     transition: all .2s cubic-bezier(.16,1,.3,1);
     overflow: hidden;
     position: relative;
+    box-sizing: border-box;
+    min-width: 0;
   }
   .wf-stage-card:hover {
     border-color: #b7cee8;
     box-shadow: 0 8px 24px rgba(18, 41, 86, 0.08);
   }
 
-  /* Parent / Final Approval Card Styling */
+  /* Stage 1: Unit Head Card */
+  .wf-stage-card.is-stage-1,
   .wf-stage-card.is-final-stage {
-    border: 2px solid #0756b9;
-    background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
-    box-shadow: 0 8px 28px rgba(7, 86, 185, 0.12);
+    border: 2px solid #1e40af;
+    background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+    box-shadow: 0 8px 26px rgba(30, 64, 175, 0.12);
+  }
+  .is-stage-1 .wf-stage-header,
+  .is-final-stage .wf-stage-header {
+    background: linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%);
+    border-bottom: 1px solid #bfdbfe;
+  }
+  .stage-badge-pill.stage-1-pill {
+    background: #1e40af;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
   }
 
-  .wf-stage-header {
-    padding: 14px 18px;
+  /* Stage 2: HR Head Card */
+  .wf-stage-card.is-stage-2 {
+    border: 2px solid #7c3aed;
+    background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
+    box-shadow: 0 8px 26px rgba(124, 58, 237, 0.10);
+  }
+  .is-stage-2 .wf-stage-header {
+    background: linear-gradient(90deg, #ede9fe 0%, #faf5ff 100%);
+    border-bottom: 1px solid #ddd6fe;
+  }
+  .stage-badge-pill.stage-2-pill {
+    background: #7c3aed;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Stage 3: HOD Card */
+  .wf-stage-card.is-hod-card {
+    border: 2px solid #059669;
+    background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%);
+    box-shadow: 0 8px 24px rgba(5, 150, 105, 0.12);
+  }
+  .is-hod-card .wf-stage-header {
+    background: linear-gradient(90deg, #d1fae5 0%, #ecfdf5 100%);
+    border-bottom: 1px solid #a7f3d0;
+  }
+  .stage-badge-pill.stage-hod-pill {
+    background: #059669;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* Subordinate Cards */
+  .wf-stage-card.is-sub-card {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
+  }
+  .is-sub-card .wf-stage-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .stage-badge-pill.stage-sub-pill {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .stage-dept-pill {
+    font-size: 11px;
+    font-weight: 700;
+    color: #065f46;
+    background: #d1fae5;
+    padding: 3px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #a7f3d0;
+    white-space: nowrap;
+  }
+
+  .stage-sync-btn {
+    background: #ffffff;
+    border: 1px solid #a7f3d0;
+    color: #059669;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .stage-sync-btn:hover {
+    background: #059669;
+    color: #ffffff;
+  }
+
+  /* "+ Add Department HOD" Card (Right Side) */
+  .add-hod-column-card {
+    flex: 0 0 290px;
+    width: 290px;
+    max-width: calc(100vw - 64px);
+    min-height: 200px;
+    border: 2px dashed #10b981;
+    border-radius: 14px;
+    background: #f0fdf4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 22px 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s cubic-bezier(.16,1,.3,1);
+    margin-top: 28px;
+    box-sizing: border-box;
+  }
+  .add-hod-column-card:hover {
+    background: #dcfce7;
+    border-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+  }
+  .add-hod-column-card.drag-over {
+    background: #bbf7d0;
+    border-color: #047857;
+    border-style: solid;
+    transform: scale(1.02);
+  }
+  .add-hod-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
     display: flex;
     align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  }
+  .add-hod-title {
+    font-size: 14.5px;
+    font-weight: 800;
+    color: #065f46;
+    margin-bottom: 5px;
+  }
+  .add-hod-desc {
+    font-size: 11.5px;
+    color: #047857;
+    line-height: 1.35;
+  }
+
+  /* Stage Header Details */
+  .wf-stage-header {
+    padding: 12px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px 10px;
     border-bottom: 1px solid #edf3f8;
     background: #fafcff;
+    box-sizing: border-box;
+    min-width: 0;
   }
   .is-final-stage .wf-stage-header {
     background: linear-gradient(90deg, #edf5ff 0%, #f4f8ff 100%);
@@ -577,41 +1078,41 @@
 
   .stage-header-left {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
-    flex: 1;
+    gap: 8px;
+    flex: 1 1 200px;
+    min-width: 0;
   }
 
   .stage-badge-pill {
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 4px 8px;
+    padding: 3px 8px;
     border-radius: 6px;
     background: #eaf1fa;
     color: #0756b9;
-  }
-  .is-final-stage .stage-badge-pill {
-    background: #0756b9;
-    color: #ffffff;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    line-height: 1.3;
+    flex-shrink: 0;
   }
 
   .stage-title-input {
     border: 1px solid transparent;
     border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 15px;
+    padding: 4px 6px;
+    font-size: 13.5px;
     font-weight: 700;
     color: #12284e;
     background: transparent;
     outline: none;
     transition: all .15s;
-    flex: 1;
-    max-width: 320px;
+    flex: 1 1 130px;
+    min-width: 110px;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
   }
   .stage-title-input:hover {
     border-color: #cbd8e8;
@@ -626,16 +1127,19 @@
   .stage-header-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
   .stage-rule-tag {
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     color: #5c6f8a;
     background: #eef3f9;
-    padding: 3px 8px;
-    border-radius: 12px;
+    padding: 3px 7px;
+    border-radius: 10px;
+    white-space: nowrap;
   }
 
   .stage-delete-btn {
@@ -643,7 +1147,7 @@
     border: none;
     color: #94a3b8;
     cursor: pointer;
-    padding: 5px;
+    padding: 4px;
     border-radius: 6px;
     display: grid;
     place-items: center;
@@ -656,15 +1160,16 @@
 
   /* Drop Zone */
   .wf-drop-zone {
-    min-height: 105px;
-    padding: 16px;
+    min-height: 90px;
+    padding: 12px 14px;
     background: #ffffff;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     transition: all .2s ease;
     position: relative;
+    box-sizing: border-box;
   }
   .wf-drop-zone.drag-over {
     background: #f0f7ff;
@@ -678,16 +1183,18 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 18px;
+    padding: 16px 12px;
     border: 2px dashed #d5e0ee;
     border-radius: 10px;
     color: #7b8ea7;
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     gap: 4px;
     background: #fafcff;
     cursor: pointer;
     transition: all .15s ease;
+    text-align: center;
+    box-sizing: border-box;
   }
   .drop-placeholder:hover {
     border-color: #0756b9;
@@ -704,13 +1211,15 @@
   .approver-chip {
     display: inline-flex;
     align-items: center;
-    gap: 9px;
-    padding: 6px 12px 6px 8px;
+    gap: 8px;
+    padding: 5px 10px 5px 6px;
     background: #ffffff;
     border: 1px solid #d3e1f0;
     border-radius: 24px;
-    box-shadow: 0 2px 8px rgba(17, 43, 86, 0.05);
+    box-shadow: 0 2px 6px rgba(17, 43, 86, 0.04);
     transition: all .15s ease;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   .approver-chip:hover {
     border-color: #9ebde3;
@@ -719,12 +1228,12 @@
   }
 
   .approver-avatar {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     background: linear-gradient(135deg, #0756b9, #17376c);
     color: #ffffff;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 800;
     display: grid;
     place-items: center;
@@ -735,20 +1244,30 @@
     display: flex;
     flex-direction: column;
     line-height: 1.2;
+    min-width: 0;
+    overflow: hidden;
   }
   .approver-name {
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 700;
     color: #12284c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
   }
   .approver-meta {
-    font-size: 11px;
+    font-size: 10.5px;
     color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
   }
 
   .approver-remove-btn {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     border: none;
     background: #f1f5f9;
@@ -760,6 +1279,7 @@
     line-height: 1;
     margin-left: 2px;
     transition: all .15s;
+    flex-shrink: 0;
   }
   .approver-remove-btn:hover {
     background: #fee2e2;
@@ -767,26 +1287,29 @@
   }
 
   .stage-quick-add-btn {
-    height: 32px;
-    padding: 0 12px;
-    border-radius: 16px;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 15px;
     border: 1px dashed #93b3dc;
     background: #f4f8fe;
     color: #0756b9;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     transition: all .15s;
+    white-space: nowrap;
   }
   .stage-quick-add-btn:hover {
     background: #e5f0fd;
     border-color: #0756b9;
   }
 
-  /* Right Palette Sidebar */
+  /* =========================================================================
+     RIGHT PALETTE SIDEBAR: SYNCED EMPLOYEES
+     ========================================================================= */
   .wf-palette-sidebar {
     background: #ffffff;
     border: 1px solid #dce5f0;
@@ -794,15 +1317,19 @@
     box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 140px);
-    min-height: 640px;
+    height: calc(100vh - 120px);
+    max-height: 860px;
+    min-height: 520px;
     position: sticky;
-    top: 96px;
+    top: 90px;
     overflow: hidden;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
   }
 
   .palette-header {
-    padding: 18px 20px 14px;
+    padding: 16px 18px 12px;
     border-bottom: 1px solid #edf3f8;
   }
   .palette-title-row {
@@ -812,7 +1339,7 @@
   }
   .palette-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 800;
     color: #12284c;
   }
@@ -821,28 +1348,30 @@
     font-weight: 800;
     color: #0756b9;
     background: #eaf2fb;
-    padding: 3px 8px;
+    padding: 2px 7px;
     border-radius: 10px;
   }
   .palette-sub {
-    margin: 4px 0 0;
-    font-size: 12px;
+    margin: 3px 0 0;
+    font-size: 11.5px;
     color: #71829d;
+    line-height: 1.35;
   }
 
   .palette-filters {
-    padding: 14px 20px;
+    padding: 12px 18px;
     border-bottom: 1px solid #edf3f8;
     background: #fbfdff;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
 
   .palette-search-box {
     position: relative;
     display: flex;
     align-items: center;
+    width: 100%;
   }
   .palette-search-box .search-icon {
     position: absolute;
@@ -852,14 +1381,15 @@
   }
   .palette-search-box input {
     width: 100%;
-    height: 36px;
-    padding: 0 30px 0 34px;
+    height: 35px;
+    padding: 0 28px 0 32px;
     border: 1px solid #d1dee9;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 12.5px;
     color: #1e293b;
     outline: none;
     transition: all .15s;
+    box-sizing: border-box;
   }
   .palette-search-box input:focus {
     border-color: #0756b9;
@@ -892,7 +1422,7 @@
     border: none;
     background: none;
     padding: 5px 0;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 700;
     color: #5b6d85;
     border-radius: 6px;
@@ -914,15 +1444,18 @@
     color: #334155;
     background: #ffffff;
     outline: none;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .palette-list {
     flex: 1;
     overflow-y: auto;
-    padding: 12px 14px;
+    padding: 10px 14px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-height: 180px;
   }
 
   /* Draggable Employee Card */
@@ -930,13 +1463,14 @@
     background: #ffffff;
     border: 1px solid #dce5f0;
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: 9px 11px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 9px;
     cursor: grab;
     transition: all .15s ease;
     user-select: none;
+    box-sizing: border-box;
   }
   .draggable-emp-card:hover {
     border-color: #0756b9;
@@ -959,12 +1493,12 @@
   }
 
   .emp-card-avatar {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: #eef4fc;
     color: #0756b9;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 800;
     display: grid;
     place-items: center;
@@ -977,7 +1511,7 @@
     min-width: 0;
   }
   .emp-card-name {
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 700;
     color: #152b53;
     white-space: nowrap;
@@ -985,7 +1519,7 @@
     text-overflow: ellipsis;
   }
   .emp-card-sub {
-    font-size: 11px;
+    font-size: 10.5px;
     color: #64748b;
     white-space: nowrap;
     overflow: hidden;
@@ -995,9 +1529,10 @@
   .emp-source-tag {
     font-size: 9.5px;
     font-weight: 800;
-    padding: 2px 6px;
+    padding: 2px 5px;
     border-radius: 4px;
     text-transform: uppercase;
+    flex-shrink: 0;
   }
   .emp-source-tag.staff {
     background: #eaf3fd;
@@ -1009,10 +1544,10 @@
   }
 
   .palette-footer {
-    padding: 10px 16px;
+    padding: 9px 14px;
     border-top: 1px solid #edf3f8;
     background: #fafcff;
-    font-size: 11.5px;
+    font-size: 11px;
     color: #71829d;
   }
   .drag-hint {
@@ -1021,7 +1556,9 @@
     gap: 6px;
   }
 
-  /* Modals */
+  /* =========================================================================
+     MODALS: RESPONSIVE
+     ========================================================================= */
   .wf-modal {
     position: fixed;
     inset: 0;
@@ -1031,7 +1568,8 @@
     display: none;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 16px;
+    box-sizing: border-box;
   }
   .wf-modal.open {
     display: flex;
@@ -1040,14 +1578,18 @@
   .wf-modal-box {
     background: #ffffff;
     border-radius: 16px;
-    width: min(540px, 100%);
+    width: min(540px, 94vw);
+    max-height: calc(100vh - 36px);
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 24px 60px rgba(0, 22, 61, 0.25);
     border: 1px solid #dce6f4;
     overflow: hidden;
     animation: modalIn .18s cubic-bezier(.16,1,.3,1);
+    box-sizing: border-box;
   }
   .wf-modal-box.modal-sm {
-    width: min(420px, 100%);
+    width: min(420px, 94vw);
   }
 
   @keyframes modalIn {
@@ -1056,15 +1598,17 @@
   }
 
   .wf-modal-header {
-    padding: 20px 24px;
+    padding: 18px 22px;
     border-bottom: 1px solid #e8eff6;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
   }
   .wf-modal-title {
     margin: 0;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 800;
     color: #12284c;
   }
@@ -1073,7 +1617,7 @@
   }
   .wf-modal-subtitle {
     margin: 3px 0 0;
-    font-size: 12.5px;
+    font-size: 12px;
     color: #64748b;
   }
   .wf-modal-close {
@@ -1087,6 +1631,7 @@
     cursor: pointer;
     display: grid;
     place-items: center;
+    flex-shrink: 0;
   }
   .wf-modal-close:hover {
     background: #e2e8f0;
@@ -1094,19 +1639,21 @@
   }
 
   .wf-modal-body {
-    padding: 22px 24px;
+    padding: 20px 22px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
+    overflow-y: auto;
+    box-sizing: border-box;
   }
 
   .wf-form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
   }
   .wf-form-label {
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     color: #334155;
     text-transform: uppercase;
@@ -1124,6 +1671,7 @@
     outline: none;
     transition: all .15s;
     width: 100%;
+    box-sizing: border-box;
     font-family: inherit;
   }
   .wf-form-input:focus, .wf-form-textarea:focus {
@@ -1139,11 +1687,12 @@
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 8px;
+    margin-top: 6px;
+    flex-wrap: wrap;
   }
 
   .assign-quick-list {
-    max-height: 300px;
+    max-height: 280px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -1159,6 +1708,7 @@
     border-radius: 8px;
     cursor: pointer;
     transition: all .12s;
+    gap: 10px;
   }
   .assign-quick-item:hover {
     background: #edf5fe;
@@ -1348,7 +1898,7 @@
     this.classList.remove('drag-over');
   }
 
-  function handleDropZoneDrop(e) {
+  async function handleDropZoneDrop(e) {
     e.preventDefault();
     this.classList.remove('drag-over');
     const stageId = this.dataset.stageId;
@@ -1357,7 +1907,7 @@
       if (!dataStr) return;
       const empData = JSON.parse(dataStr);
       if (empData && empData.employee_id) {
-        addApproverToStage(stageId, empData);
+        await addApproverToStage(stageId, empData);
       }
     } catch (err) {
       console.error('Failed to parse dropped data', err);
@@ -1365,8 +1915,13 @@
   }
 
   // -------------------------------------------------------------------------
-  // Workflow Loading & Rendering
+  // Workflow Loading & Foundation Management
   // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Workflow Loading & Foundation Management
+  // -------------------------------------------------------------------------
+  let isAssigningNewBranch = false;
+
   async function loadWorkflow(wfId) {
     setSaveStatus('saving', 'Loading workflow...');
     try {
@@ -1377,12 +1932,14 @@
       }
 
       currentWorkflowId = data.id;
-      // If flow_data is present and valid, use it; otherwise construct default structure from workflow steps
       if (data.flow_data && data.flow_data.stages && data.flow_data.stages.length > 0) {
         activeFlowData = data.flow_data;
       } else {
         activeFlowData = constructDefaultFlowData(data.workflow || data);
       }
+
+      // Guarantee Step 1 (Unit Head) and Step 2 (HR Head) remain constant foundation
+      ensureConstantStepsAndBranches(activeFlowData);
 
       renderCanvas();
       setSaveStatus('saved', 'All changes saved');
@@ -1394,6 +1951,76 @@
     }
   }
 
+  function ensureConstantStepsAndBranches(flowData) {
+    if (!flowData || !flowData.stages) return;
+
+    // 1. Ensure Step 1: Final Approval (Unit Head) - Top Level Constant
+    let finalStage = flowData.stages.find(s => s.is_final);
+    if (!finalStage) {
+      finalStage = {
+        id: 'stage-final',
+        name: 'Final Approval (Unit Head)',
+        is_final: true,
+        order: 1,
+        parent_id: null,
+        approvers: []
+      };
+      flowData.stages.unshift(finalStage);
+    }
+    finalStage.order = 1;
+
+    // 2. Ensure Step 2: HR Head Review - Constant Direct Subordinate of Step 1
+    let hrStage = flowData.stages.find(s => !s.is_final && (s.is_hr_stage || s.order === 2));
+    if (!hrStage) {
+      hrStage = {
+        id: 'stage-hr',
+        name: 'Stage 2: HR Head Review',
+        is_final: false,
+        is_hr_stage: true,
+        order: 2,
+        parent_id: finalStage.id,
+        approvers: []
+      };
+      const finalIdx = flowData.stages.indexOf(finalStage);
+      flowData.stages.splice(finalIdx + 1, 0, hrStage);
+    } else {
+      hrStage.is_hr_stage = true;
+      hrStage.order = 2;
+      hrStage.parent_id = finalStage.id;
+    }
+
+    // 3. Ensure at least one Department HOD branch exists
+    let hodStages = flowData.stages.filter(s => !s.is_final && !s.is_hr_stage && s.is_hod_stage);
+    if (hodStages.length === 0) {
+      const candidates = flowData.stages.filter(s => !s.is_final && !s.is_hr_stage && !s.is_auto_generated);
+      if (candidates.length > 0) {
+        candidates[0].is_hod_stage = true;
+        candidates[0].branch_id = candidates[0].branch_id || `branch-${Date.now()}`;
+        candidates[0].parent_id = hrStage.id;
+      } else {
+        const defaultHod = {
+          id: `stage-hod-${Date.now()}`,
+          name: 'Department Head Review',
+          is_final: false,
+          is_hod_stage: true,
+          branch_id: 'branch-1',
+          order: 3,
+          parent_id: hrStage.id,
+          approvers: []
+        };
+        flowData.stages.push(defaultHod);
+      }
+    }
+
+    // Tag HODs with branch_id if missing and ensure parent_id points to HR Head
+    flowData.stages.forEach((s, idx) => {
+      if (s.is_hod_stage) {
+        if (!s.branch_id) s.branch_id = `branch-${s.id || idx + 1}`;
+        s.parent_id = hrStage.id;
+      }
+    });
+  }
+
   function constructDefaultFlowData(wf) {
     const stages = [];
     if (wf.steps && wf.steps.length > 0) {
@@ -1401,9 +2028,12 @@
         stages.push({
           id: `stage-${st.id || idx + 1}`,
           db_id: st.id,
-          name: st.step_name || (st.is_final ? 'Final Approval' : `Stage ${idx + 1}`),
+          name: st.step_name || (st.is_final ? 'Final Approval (Unit Head)' : (st.step_order === 2 ? 'Stage 2: HR Head Review' : `Department Review`)),
           is_final: !!st.is_final,
           order: st.step_order || (idx + 1),
+          is_hr_stage: !st.is_final && (st.step_order === 2 || (st.step_name && st.step_name.toLowerCase().includes('hr'))),
+          is_hod_stage: !st.is_final && st.step_order >= 3,
+          branch_id: (!st.is_final && st.step_order >= 3) ? `branch-${st.id}` : null,
           parent_id: st.parent_step_id ? `stage-${st.parent_step_id}` : null,
           approvers: (st.approvers || []).map(a => {
             const emp = employeeMap.get(a.employee_id) || {};
@@ -1418,68 +2048,164 @@
           })
         });
       });
-    } else {
-      // Create minimal default: Final Approval node
-      stages.push({
-        id: 'stage-final',
-        name: 'Final Approval (Parent)',
-        is_final: true,
-        order: 1,
-        parent_id: null,
-        approvers: []
-      });
     }
-    return {
+
+    const flowData = {
       workflow_id: wf.id,
       name: wf.name,
       code: wf.code,
       stages: stages
     };
+    ensureConstantStepsAndBranches(flowData);
+    return flowData;
   }
 
   // -------------------------------------------------------------------------
-  // Render Canvas (Visual Hierarchical Tree Pipeline)
+  // Render Canvas: Visual Organogram Tree Pipeline
   // -------------------------------------------------------------------------
   function renderCanvas() {
     canvasPipeline.innerHTML = '';
     if (!activeFlowData || !activeFlowData.stages) return;
 
-    // Separate Final Stage (Top) and Subordinate Stages
-    const stages = [...activeFlowData.stages];
-    const finalStage = stages.find(s => s.is_final) || stages[0];
-    const subStages = stages.filter(s => s !== finalStage);
+    ensureConstantStepsAndBranches(activeFlowData);
 
-    // Sort subordinate stages by order ascending (Stage 1 -> Stage 2 -> etc.)
-    subStages.sort((a, b) => (a.order || 0) - (b.order || 0));
+    const finalStage = activeFlowData.stages.find(s => s.is_final || s.order === 1);
+    const hrStage = activeFlowData.stages.find(s => !s.is_final && (s.is_hr_stage || s.order === 2));
+    const hodStages = activeFlowData.stages.filter(s => !s.is_final && !s.is_hr_stage && s.is_hod_stage);
 
-    // 1. Render Final Parent Stage at Top
+    // Sort HOD stages by order
+    hodStages.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    // 1. TOP TRUNK: Step 1 (Unit Head) & Step 2 (HR Head)
+    const trunk = document.createElement('div');
+    trunk.className = 'wf-organogram-trunk';
+
     if (finalStage) {
-      const finalCard = createStageElement(finalStage, true);
-      canvasPipeline.appendChild(finalCard);
+      const card1 = createStageElement(finalStage, 'stage1', 0);
+      trunk.appendChild(card1);
     }
 
-    // 2. Render Subordinate Stages with Hierarchical Flow Connectors
-    subStages.forEach((stg, idx) => {
-      // Connecting arrow pointing upwards towards Parent
-      const connector = document.createElement('div');
-      connector.className = 'wf-connector';
-      connector.innerHTML = `
-        <div class="wf-connector-line"></div>
-        <div class="wf-connector-arrow" title="Submits upward to Next Stage / Final Approver">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
-        </div>
-      `;
-      canvasPipeline.appendChild(connector);
+    if (hrStage) {
+      trunk.appendChild(createConnectorElement('Submits upward to Final Approver (Unit Head)'));
+      const card2 = createStageElement(hrStage, 'stage2', 0);
+      trunk.appendChild(card2);
+    }
+    canvasPipeline.appendChild(trunk);
 
-      const stageCard = createStageElement(stg, false);
-      canvasPipeline.appendChild(stageCard);
+    // 2. TREE-SPLIT BRANCH SECTION: Horizontal HOD Columns (Side-by-Side)
+    const splitSection = document.createElement('div');
+    splitSection.className = 'wf-tree-split-section';
+
+    // Vertical stem dropping from HR Head down to branch bar
+    const trunkConnector = document.createElement('div');
+    trunkConnector.className = 'wf-trunk-connector';
+    splitSection.appendChild(trunkConnector);
+
+    // Horizontal Branches Container
+    const branchesContainer = document.createElement('div');
+    branchesContainer.className = 'wf-branches-container';
+    branchesContainer.id = 'wf-branches-container';
+
+    // Render each Department Branch column
+    hodStages.forEach((hod) => {
+      const branchCol = document.createElement('div');
+      branchCol.className = 'wf-dept-branch';
+      branchCol.dataset.branchId = hod.branch_id;
+
+      // Stem from branch bar down into HOD card
+      const stem = document.createElement('div');
+      stem.className = 'wf-branch-stem';
+      branchCol.appendChild(stem);
+
+      // HOD Stage Card
+      const hodCard = createStageElement(hod, 'hod', hodStages.length);
+      branchCol.appendChild(hodCard);
+
+      // Subordinate Stages in this department column (Senior to Junior)
+      const subStages = activeFlowData.stages.filter(s => {
+        return s.branch_id === hod.branch_id && !s.is_hod_stage && !s.is_final && !s.is_hr_stage;
+      });
+      subStages.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      subStages.forEach((sub) => {
+        const subConn = document.createElement('div');
+        subConn.className = 'wf-sub-connector';
+        branchCol.appendChild(subConn);
+
+        const subCard = createStageElement(sub, 'subordinate', hodStages.length);
+        branchCol.appendChild(subCard);
+      });
+
+      branchesContainer.appendChild(branchCol);
     });
+
+    // Rightmost "+ Add Department HOD" Card (spawns new HOD box to the right)
+    const addHodCard = document.createElement('div');
+    addHodCard.className = 'add-hod-column-card';
+    addHodCard.id = 'add-hod-column-card';
+    addHodCard.innerHTML = `
+      <div class="add-hod-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </div>
+      <div class="add-hod-title">+ Add Department HOD</div>
+      <div class="add-hod-desc">Drop employee card here to add another HOD column to the right, or click to choose from master</div>
+    `;
+
+    addHodCard.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      this.classList.add('drag-over');
+      e.dataTransfer.dropEffect = 'copy';
+    });
+    addHodCard.addEventListener('dragleave', function() {
+      this.classList.remove('drag-over');
+    });
+    addHodCard.addEventListener('drop', async function(e) {
+      e.preventDefault();
+      this.classList.remove('drag-over');
+      try {
+        const dataStr = e.dataTransfer.getData('text/plain');
+        if (!dataStr) return;
+        const empData = JSON.parse(dataStr);
+        if (empData && empData.employee_id) {
+          await createNewDepartmentBranchWithHod(empData);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    addHodCard.addEventListener('click', function() {
+      openAssignModalForNewBranch();
+    });
+
+    branchesContainer.appendChild(addHodCard);
+    splitSection.appendChild(branchesContainer);
+    canvasPipeline.appendChild(splitSection);
   }
 
-  function createStageElement(stage, isFinal) {
+  function createConnectorElement(tooltip) {
+    const connector = document.createElement('div');
+    connector.className = 'wf-connector';
+    connector.innerHTML = `
+      <div class="wf-connector-line"></div>
+      <div class="wf-connector-arrow" title="${tooltip || 'Submits upward to Next Stage / Final Approver'}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+      </div>
+    `;
+    return connector;
+  }
+
+  function createStageElement(stage, type, hodCount) {
     const card = document.createElement('div');
-    card.className = `wf-stage-card ${isFinal ? 'is-final-stage' : ''}`;
     card.dataset.stageId = stage.id;
+    if (stage.branch_id) card.dataset.branchId = stage.branch_id;
+
+    let cardClass = 'wf-stage-card';
+    if (type === 'stage1') cardClass += ' is-stage-1 is-final-stage';
+    else if (type === 'stage2') cardClass += ' is-stage-2';
+    else if (type === 'hod') cardClass += ' is-hod-card';
+    else cardClass += ' is-sub-card';
+    card.className = cardClass;
 
     // Header
     const header = document.createElement('div');
@@ -1489,21 +2215,37 @@
     headerLeft.className = 'stage-header-left';
 
     const badge = document.createElement('span');
-    badge.className = 'stage-badge-pill';
-    if (isFinal) {
+    if (type === 'stage1') {
+      badge.className = 'stage-badge-pill stage-1-pill';
       badge.innerHTML = `
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-        FINAL APPROVAL (PARENT)
+        STEP 1: FINAL APPROVAL (UNIT HEAD) • CONSTANT
+      `;
+    } else if (type === 'stage2') {
+      badge.className = 'stage-badge-pill stage-2-pill';
+      badge.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        STEP 2: HR HEAD REVIEW • CONSTANT
+      `;
+    } else if (type === 'hod') {
+      badge.className = 'stage-badge-pill stage-hod-pill';
+      badge.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        HOD REVIEW • ${(stage.department || 'DEPARTMENT').toUpperCase()}
       `;
     } else {
-      badge.textContent = `STAGE ${stage.order || 2}`;
+      badge.className = 'stage-badge-pill stage-sub-pill';
+      badge.innerHTML = `
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        ${(stage.designation || stage.name || 'REVIEW').toUpperCase()}
+      `;
     }
     headerLeft.appendChild(badge);
 
     const titleInput = document.createElement('input');
     titleInput.type = 'text';
     titleInput.className = 'stage-title-input';
-    titleInput.value = stage.name || (isFinal ? 'Final Approval' : 'Review Stage');
+    titleInput.value = stage.name || (type === 'stage1' ? 'Final Approval (Unit Head)' : (type === 'stage2' ? 'Stage 2: HR Head Review' : 'Department Review'));
     titleInput.title = 'Click to edit stage title';
     titleInput.addEventListener('input', function() {
       stage.name = this.value;
@@ -1515,23 +2257,66 @@
     const headerRight = document.createElement('div');
     headerRight.className = 'stage-header-right';
 
+    // Department Badge and Re-Sync Button for HOD card
+    if (type === 'hod' && stage.approvers && stage.approvers.length > 0) {
+      const hod = stage.approvers[0];
+      if (hod.department) {
+        const deptPill = document.createElement('span');
+        deptPill.className = 'stage-dept-pill';
+        deptPill.innerHTML = `🏢 ${hod.department}`;
+        headerRight.appendChild(deptPill);
+
+        const refreshBtn = document.createElement('button');
+        refreshBtn.type = 'button';
+        refreshBtn.className = 'stage-sync-btn';
+        refreshBtn.title = 'Re-generate subordinate hierarchy for this department';
+        refreshBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Sync
+        `;
+        refreshBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handleHodAssignedToBranch(stage.branch_id, hod);
+        });
+        headerRight.appendChild(refreshBtn);
+      }
+    }
+
+    // Delete buttons:
+    if (type === 'hod' && hodCount > 1) {
+      const delBranchBtn = document.createElement('button');
+      delBranchBtn.type = 'button';
+      delBranchBtn.className = 'stage-delete-btn';
+      delBranchBtn.title = 'Remove this department branch';
+      delBranchBtn.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      `;
+      delBranchBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteDepartmentBranch(stage.branch_id);
+      });
+      headerRight.appendChild(delBranchBtn);
+    } else if (type === 'subordinate') {
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'stage-delete-btn';
+      delBtn.title = 'Delete this subordinate stage';
+      delBtn.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      `;
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteStage(stage.id);
+      });
+      headerRight.appendChild(delBtn);
+    }
+    // Step 1 and Step 2 have NO delete button (constant foundation)
+
     const ruleTag = document.createElement('span');
     ruleTag.className = 'stage-rule-tag';
     ruleTag.textContent = (stage.approvers && stage.approvers.length > 1) ? 'Any Approver' : 'Mandatory';
     headerRight.appendChild(ruleTag);
 
-    // Delete button (allowed for non-final stages)
-    if (!isFinal) {
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'stage-delete-btn';
-      delBtn.title = 'Delete this stage';
-      delBtn.innerHTML = `
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      `;
-      delBtn.addEventListener('click', () => deleteStage(stage.id));
-      headerRight.appendChild(delBtn);
-    }
     header.appendChild(headerRight);
     card.appendChild(header);
 
@@ -1539,20 +2324,37 @@
     const dropZone = document.createElement('div');
     dropZone.className = 'wf-drop-zone';
     dropZone.dataset.stageId = stage.id;
+    if (stage.branch_id) dropZone.dataset.branchId = stage.branch_id;
 
     dropZone.addEventListener('dragover', handleDropZoneDragOver);
     dropZone.addEventListener('dragleave', handleDropZoneDragLeave);
     dropZone.addEventListener('drop', handleDropZoneDrop);
 
-    // Render assigned approvers
     const approvers = stage.approvers || [];
     if (approvers.length === 0) {
       const placeholder = document.createElement('div');
       placeholder.className = 'drop-placeholder';
-      placeholder.innerHTML = `
-        <span>Drag synced employee here</span>
-        <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign approver</span>
-      `;
+      if (type === 'stage1') {
+        placeholder.innerHTML = `
+          <span style="font-weight:700;color:#1e40af;">Drag Unit Head / Final Approver here</span>
+          <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign Unit Head</span>
+        `;
+      } else if (type === 'stage2') {
+        placeholder.innerHTML = `
+          <span style="font-weight:700;color:#7c3aed;">Drag HR Head Approver here</span>
+          <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign HR Head</span>
+        `;
+      } else if (type === 'hod') {
+        placeholder.innerHTML = `
+          <span style="font-weight:700;color:#059669;font-size:13px;">Drag & Drop HOD / Manager here</span>
+          <span style="font-size:11px;font-weight:500;color:#065f46;">Auto-generates department subordinate hierarchy below</span>
+        `;
+      } else {
+        placeholder.innerHTML = `
+          <span>Drag ${stage.designation || 'employee'} here</span>
+          <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign approver</span>
+        `;
+      }
       placeholder.addEventListener('click', () => openAssignModal(stage.id));
       dropZone.appendChild(placeholder);
     } else {
@@ -1563,8 +2365,10 @@
 
         const initials = (appr.employee_name || 'E').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
+        const avatarBg = type === 'stage2' ? 'background:linear-gradient(135deg,#7c3aed,#5b21b6);' : (type === 'hod' ? 'background:linear-gradient(135deg,#059669,#047857);' : '');
+
         chip.innerHTML = `
-          <div class="approver-avatar">${initials}</div>
+          <div class="approver-avatar" style="${avatarBg}">${initials}</div>
           <div class="approver-info">
             <span class="approver-name">${appr.employee_name}</span>
             <span class="approver-meta">${appr.employee_id} • ${appr.designation || appr.department || 'Approver'}</span>
@@ -1580,13 +2384,12 @@
         dropZone.appendChild(chip);
       });
 
-      // Quick add button for adding multiple approvers (many-to-many)
       const quickAdd = document.createElement('button');
       quickAdd.type = 'button';
       quickAdd.className = 'stage-quick-add-btn';
       quickAdd.innerHTML = `
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        + Add Approver
+        + Add
       `;
       quickAdd.addEventListener('click', () => openAssignModal(stage.id));
       dropZone.appendChild(quickAdd);
@@ -1597,23 +2400,27 @@
   }
 
   // -------------------------------------------------------------------------
-  // Approver Operations
+  // Approver Operations & Multi-Branch Engine
   // -------------------------------------------------------------------------
-  function addApproverToStage(stageId, empData) {
+  async function addApproverToStage(stageId, empData) {
     if (!activeFlowData || !activeFlowData.stages) return;
     const stage = activeFlowData.stages.find(s => s.id === stageId);
     if (!stage) return;
 
+    // If dropped/assigned to an HOD stage:
+    if (stage.is_hod_stage) {
+      await handleHodAssignedToBranch(stage.branch_id, empData);
+      return;
+    }
+
     if (!stage.approvers) stage.approvers = [];
 
-    // Avoid duplicate approver within the same stage
     const exists = stage.approvers.some(a => a.employee_id === empData.employee_id);
     if (exists) {
       alert(`${empData.employee_name} (${empData.employee_id}) is already an approver in this stage.`);
       return;
     }
 
-    // Enrich from full master if possible
     const masterEmp = employeeMap.get(empData.employee_id) || {};
     stage.approvers.push({
       employee_id: empData.employee_id,
@@ -1621,9 +2428,128 @@
       designation: empData.designation || masterEmp.designation || '',
       department: empData.department || masterEmp.department || '',
       source_type: empData.source_type || masterEmp.source_type || 'staff',
-      role_label: stage.is_final ? 'Final Approver' : 'Reviewer'
+      role_label: stage.is_final ? 'Final Approver' : (stage.is_hr_stage ? 'HR Head' : (stage.designation || 'Reviewer'))
     });
 
+    markDirty();
+    renderCanvas();
+  }
+
+  async function handleHodAssignedToBranch(branchId, empData) {
+    if (!activeFlowData || !activeFlowData.stages) return;
+    const hodStage = activeFlowData.stages.find(s => s.branch_id === branchId && s.is_hod_stage);
+    if (!hodStage) return;
+
+    const masterEmp = employeeMap.get(empData.employee_id) || {};
+    const hodEmp = {
+      employee_id: empData.employee_id,
+      employee_name: empData.employee_name || masterEmp.employee_name || empData.employee_id,
+      designation: empData.designation || masterEmp.designation || '',
+      department: empData.department || masterEmp.department || '',
+      source_type: empData.source_type || masterEmp.source_type || 'staff',
+      role_label: 'HOD / Department Head'
+    };
+
+    hodStage.approvers = [hodEmp];
+    hodStage.department = hodEmp.department;
+    hodStage.designation = hodEmp.designation;
+    hodStage.name = `${hodEmp.department || 'Department'} Head Review (${hodEmp.designation || 'HOD'})`;
+
+    setSaveStatus('saving', `Generating hierarchy for ${hodEmp.department || 'Department'}...`);
+    try {
+      const deptParam = encodeURIComponent(hodEmp.department || '');
+      const hodIdParam = encodeURIComponent(hodEmp.employee_id);
+      const res = await fetch(`/api/department-hierarchy?hod_id=${hodIdParam}&department=${deptParam}`);
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || 'Could not fetch department hierarchy.');
+      }
+
+      // Remove previous auto-generated subordinate stages for THIS branch only
+      activeFlowData.stages = activeFlowData.stages.filter(s => {
+        return !(s.branch_id === branchId && s.is_auto_generated);
+      });
+
+      // Build subordinate stages for this branch from Senior to Junior
+      let currentParentId = hodStage.id;
+      let nextOrder = 100 + (result.hierarchy_levels || []).length;
+
+      (result.hierarchy_levels || []).forEach((lvl, idx) => {
+        const newStageId = `stage-sub-${branchId}-${lvl.rank}-${Date.now()}-${idx}`;
+        activeFlowData.stages.push({
+          id: newStageId,
+          name: lvl.stage_name || `${lvl.designation} Review`,
+          is_final: false,
+          order: nextOrder++,
+          parent_id: currentParentId,
+          branch_id: branchId,
+          department: hodEmp.department,
+          is_auto_generated: true,
+          designation: lvl.designation,
+          tier_name: lvl.tier_name,
+          rank: lvl.rank,
+          approvers: (lvl.employees || []).map(emp => ({
+            employee_id: emp.employee_id,
+            employee_name: emp.employee_name,
+            designation: emp.designation,
+            department: emp.department,
+            source_type: emp.source_type,
+            role_label: lvl.designation
+          }))
+        });
+        currentParentId = newStageId;
+      });
+
+      markDirty();
+      renderCanvas();
+      setSaveStatus('unsaved', `Auto-generated ${result.hierarchy_levels.length} subordinate stages for ${hodEmp.department}`);
+    } catch (err) {
+      console.error('Error auto-generating department hierarchy:', err);
+      alert(`Could not auto-generate hierarchy: ${err.message}`);
+      markDirty();
+      renderCanvas();
+    }
+  }
+
+  async function createNewDepartmentBranchWithHod(empData) {
+    if (!activeFlowData || !activeFlowData.stages) return;
+    const hrStage = activeFlowData.stages.find(s => !s.is_final && s.is_hr_stage);
+    const branchId = 'branch-' + Date.now();
+
+    const newHodStage = {
+      id: `stage-hod-${Date.now()}`,
+      name: empData ? `${empData.department || 'Department'} Head Review` : 'Department Head Review',
+      is_final: false,
+      is_hod_stage: true,
+      branch_id: branchId,
+      department: empData ? (empData.department || '') : '',
+      designation: empData ? (empData.designation || '') : '',
+      order: 3 + activeFlowData.stages.filter(s => s.is_hod_stage).length,
+      parent_id: hrStage ? hrStage.id : null,
+      approvers: empData ? [empData] : []
+    };
+    activeFlowData.stages.push(newHodStage);
+
+    if (empData) {
+      await handleHodAssignedToBranch(branchId, empData);
+    } else {
+      markDirty();
+      renderCanvas();
+    }
+  }
+
+  function deleteDepartmentBranch(branchId) {
+    if (!activeFlowData || !activeFlowData.stages) return;
+    const hodCount = activeFlowData.stages.filter(s => s.is_hod_stage).length;
+    if (hodCount <= 1) {
+      alert('At least one Department HOD branch must be maintained.');
+      return;
+    }
+
+    if (!confirm('Remove this department branch and all its subordinate stages?')) return;
+
+    activeFlowData.stages = activeFlowData.stages.filter(s => s.branch_id !== branchId);
     markDirty();
     renderCanvas();
   }
@@ -1634,6 +2560,19 @@
     if (!stage || !stage.approvers) return;
 
     stage.approvers = stage.approvers.filter(a => a.employee_id !== empId);
+
+    // If removing HOD from a branch, optionally clear its auto-generated subordinates
+    if (stage.is_hod_stage && stage.approvers.length === 0) {
+      const hasAutoStages = activeFlowData.stages.some(s => s.branch_id === stage.branch_id && s.is_auto_generated);
+      if (hasAutoStages && confirm('HOD was removed. Clear auto-generated subordinate stages for this branch as well?')) {
+        activeFlowData.stages = activeFlowData.stages.filter(s => {
+          return !(s.branch_id === stage.branch_id && s.is_auto_generated);
+        });
+        stage.name = 'Department Head Review';
+        stage.department = '';
+      }
+    }
+
     markDirty();
     renderCanvas();
   }
@@ -1642,47 +2581,28 @@
   // Stage Operations
   // -------------------------------------------------------------------------
   function addStage() {
-    if (!activeFlowData) return;
-    if (!activeFlowData.stages) activeFlowData.stages = [];
-
-    const currentCount = activeFlowData.stages.length;
-    const newStageOrder = currentCount + 1;
-    const newStageId = 'stage-' + Date.now();
-
-    // Final stage ID to serve as parent
-    const finalStage = activeFlowData.stages.find(s => s.is_final);
-    const parentId = finalStage ? finalStage.id : null;
-
-    activeFlowData.stages.push({
-      id: newStageId,
-      name: `Stage ${newStageOrder}: Department Review`,
-      is_final: false,
-      order: newStageOrder,
-      parent_id: parentId,
-      approvers: []
-    });
-
-    markDirty();
-    renderCanvas();
+    // Default "+ Add Stage" creates a new HOD Department branch to the right!
+    openAssignModalForNewBranch();
   }
 
   function deleteStage(stageId) {
     if (!activeFlowData || !activeFlowData.stages) return;
     const stage = activeFlowData.stages.find(s => s.id === stageId);
-    if (!stage || stage.is_final) return;
+    if (!stage) return;
+
+    if (stage.is_final || stage.is_hr_stage || stage.order === 1 || stage.order === 2) {
+      alert('Step 1 (Unit Head) and Step 2 (HR Head) are constant foundation stages and cannot be deleted.');
+      return;
+    }
+
+    if (stage.is_hod_stage) {
+      deleteDepartmentBranch(stage.branch_id);
+      return;
+    }
 
     if (!confirm(`Delete stage "${stage.name}"?`)) return;
 
     activeFlowData.stages = activeFlowData.stages.filter(s => s.id !== stageId);
-
-    // Re-index remaining subordinate stage orders
-    let orderIndex = 2;
-    activeFlowData.stages.forEach(s => {
-      if (!s.is_final) {
-        s.order = orderIndex++;
-      }
-    });
-
     markDirty();
     renderCanvas();
   }
@@ -1694,6 +2614,12 @@
     activeFlowData.stages.forEach(s => {
       s.approvers = [];
     });
+
+    // Remove auto-generated subordinate stages across all branches
+    activeFlowData.stages = activeFlowData.stages.filter(s => {
+      return s.is_final || s.is_hr_stage || s.is_hod_stage || !s.is_auto_generated;
+    });
+
     markDirty();
     renderCanvas();
   }
@@ -1763,6 +2689,14 @@
     modalAssign.classList.add('open');
   }
 
+  function openAssignModalForNewBranch() {
+    targetStageForModal = '__NEW_BRANCH__';
+    document.getElementById('assign-modal-title').textContent = 'Add Department HOD (New Branch)';
+    document.getElementById('assign-modal-search').value = '';
+    renderAssignModalList('');
+    modalAssign.classList.add('open');
+  }
+
   function renderAssignModalList(query) {
     const list = document.getElementById('assign-quick-list');
     list.innerHTML = '';
@@ -1790,10 +2724,13 @@
         </div>
         <span class="emp-source-tag ${emp.source_type}">${emp.source_type}</span>
       `;
-      item.addEventListener('click', () => {
-        if (targetStageForModal) {
-          addApproverToStage(targetStageForModal, emp);
+      item.addEventListener('click', async () => {
+        if (targetStageForModal === '__NEW_BRANCH__') {
           modalAssign.classList.remove('open');
+          await createNewDepartmentBranchWithHod(emp);
+        } else if (targetStageForModal) {
+          modalAssign.classList.remove('open');
+          await addApproverToStage(targetStageForModal, emp);
         }
       });
       list.appendChild(item);
