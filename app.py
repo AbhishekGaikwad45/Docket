@@ -609,9 +609,8 @@ def get_designation_seniority(designation: str) -> tuple[int, str]:
     return (15, "Support Staff & Other Designations")
 
 
-@app.route("/api/department-hierarchy", methods=["GET"])
 @require_admin
-def get_department_hierarchy():
+def _legacy_get_department_hierarchy():
     hod_id = (request.args.get("hod_id") or "").strip()
     department = (request.args.get("department") or "").strip()
 
