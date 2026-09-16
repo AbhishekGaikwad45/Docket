@@ -79,3 +79,4 @@ def sync_mantra_admin():
             'employees': []
 
         }), 500
+        
