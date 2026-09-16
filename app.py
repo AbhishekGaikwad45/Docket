@@ -681,15 +681,37 @@ def create_approval_workflow():
         db.add(wf)
         db.flush()
 
-        # Seed default top-level Final Approval step
+        # Seed default Step 1: Final Approval (Unit Head)
         final_step = ApprovalWorkflowStep(
             workflow_id=wf.id,
             step_order=1,
-            step_name="Final Approval",
+            step_name="Final Approval (Unit Head)",
             is_final=True,
             parent_step_id=None,
         )
         db.add(final_step)
+        db.flush()
+
+        # Seed default Step 2: HR Head Review (Constant)
+        hr_step = ApprovalWorkflowStep(
+            workflow_id=wf.id,
+            step_order=2,
+            step_name="Stage 2: HR Head Review",
+            is_final=False,
+            parent_step_id=final_step.id,
+        )
+        db.add(hr_step)
+        db.flush()
+
+        # Seed default Step 3: Department Head Review (HOD Branch 1)
+        hod_step = ApprovalWorkflowStep(
+            workflow_id=wf.id,
+            step_order=3,
+            step_name="Department Head Review",
+            is_final=False,
+            parent_step_id=hr_step.id,
+        )
+        db.add(hod_step)
         db.flush()
 
         initial_flow_data = {
@@ -700,10 +722,31 @@ def create_approval_workflow():
                 {
                     "id": f"stage-{final_step.id}",
                     "db_id": final_step.id,
-                    "name": "Final Approval",
+                    "name": "Final Approval (Unit Head)",
                     "is_final": True,
                     "order": 1,
                     "parent_id": None,
+                    "approvers": []
+                },
+                {
+                    "id": f"stage-{hr_step.id}",
+                    "db_id": hr_step.id,
+                    "name": "Stage 2: HR Head Review",
+                    "is_final": False,
+                    "is_hr_stage": True,
+                    "order": 2,
+                    "parent_id": f"stage-{final_step.id}",
+                    "approvers": []
+                },
+                {
+                    "id": f"stage-{hod_step.id}",
+                    "db_id": hod_step.id,
+                    "name": "Department Head Review",
+                    "is_final": False,
+                    "is_hod_stage": True,
+                    "branch_id": "branch-1",
+                    "order": 3,
+                    "parent_id": f"stage-{hr_step.id}",
                     "approvers": []
                 }
             ]
@@ -898,6 +941,154 @@ def rename_approval_workflow(workflow_id):
         return jsonify({"success": True, "message": "Workflow renamed successfully.", "name": wf.name})
     except Exception as e:
         db.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Department Approval Hierarchy Engine
+# ---------------------------------------------------------------------------
+def get_designation_seniority(designation: str) -> tuple[int, str]:
+    """
+    Returns (rank_number, tier_title) where lower rank_number corresponds
+    to higher corporate seniority.
+    """
+    if not designation:
+        return (15, "Support Staff & Other Designations")
+    u = designation.upper().strip()
+
+    # Tier 1: Head / Executive Leadership
+    if any(k in u for k in ["VICE PRESIDENT", "UNIT HEAD", "ASSOCIATE VICE PRESIDENT"]):
+        return (1, "Head / Executive Leadership")
+    # Tier 2: General Manager
+    if "GENERAL MANAGER" in u and not any(k in u for k in ["DEPUTY", "DY", "ASST", "ASSISTANT"]):
+        return (2, "General Manager")
+    # Tier 3: Deputy / Assistant General Manager
+    if any(k in u for k in ["DEPUTY GENERAL MANAGER", "ASSISTANT GENERAL MANAGER", "DGM", "DY. GENERAL MANAGER", "DY GENERAL MANAGER", "ASST GENERAL MANAGER", "ASST. GENERAL MANAGER"]):
+        return (3, "Deputy / Assistant General Manager")
+    # Tier 4: Senior Manager
+    if any(k in u for k in ["SENIOR MANAGER", "SR.MANAGER", "SR. MANAGER", "SR MANAGER"]):
+        return (4, "Senior Manager")
+    # Tier 5: Manager / Site Lead / Owner
+    if any(k in u for k in ["MANAGER", "SITE INCHARGE", "LEAD", "OWNER"]) and not any(k in u for k in ["DEPUTY", "DY", "ASST", "ASSISTANT", "JR", "JUNIOR"]):
+        return (5, "Manager")
+    # Tier 6: Deputy / Junior Manager
+    if any(k in u for k in ["DEPUTY MANAGER", "DY. MANAGER", "DY MANAGER", "JR.MANAGER", "JR. MANAGER", "JR MANAGER"]):
+        return (6, "Deputy / Junior Manager")
+    # Tier 7: Assistant Manager
+    if any(k in u for k in ["ASSISTANT MANAGER", "ASST. MANAGER", "ASST MANAGER"]):
+        return (7, "Assistant Manager")
+    # Tier 8: Senior Executive / Officer / Accountant
+    if any(k in u for k in ["SENIOR ENGINEER", "SR. ENGINEER", "SR.ENGINEER", "SR ENGINEER", "SENIOR OFFICER", "SR. OFFICER", "SR.OFFICER", "SR OFFICER", "HR &ADMIN OFFICER", "HR & ADMIN OFFICER", "ACCOUNTANT"]):
+        return (8, "Senior Executive / Officer / Accountant")
+    # Tier 9: Executive / Officer / Engineer
+    if ("ENGINEER" in u or "OFFICER" in u) and not any(k in u for k in ["ASST", "ASSISTANT", "JR", "JUNIOR", "GET", "TRAINEE", "SENIOR", "SR"]):
+        return (9, "Executive / Officer / Engineer")
+    # Tier 10: Assistant Officer / Assistant Engineer / Assistant Admin
+    if any(k in u for k in ["ASSISTANT ENGINEER", "ASST. ENGINEER", "ASST ENGINEER", "ASSISTANT OFFICER", "ASST. OFFICER", "ASST OFFICER", "ASSISTANT ADMIN", "ASST. ADMIN", "ASST ADMIN"]):
+        return (10, "Assistant Officer / Engineer / Admin")
+    # Tier 11: Junior Engineer / Junior Officer / GET
+    if any(k in u for k in ["JUNIOR", "JR.", "JR ", "GET", "GRADUATE ENGINEER TRAINEE", "TRAINEE"]):
+        return (11, "Junior Officer / Junior Engineer / Trainee")
+    # Tier 12: Supervisor / Foreman
+    if any(k in u for k in ["SUPERVISOR", "FOREMAN"]):
+        return (12, "Supervisor / Foreman")
+    # Tier 13: Assistant / Administrative Staff
+    if any(k in u for k in ["ASSISTANT", "RECEPTIONIST"]):
+        return (13, "Assistant / Staff")
+    # Tier 14: Skilled Technical Trades
+    if any(k in u for k in ["TECHNICIAN", "ELECTRICIAN", "MECHANIC", "FITTER", "WELDER", "OPERATOR", "RIGGER", "CARPENTER", "PLUMBER", "MASION", "TECHNICAL"]):
+        return (14, "Technical & Skilled Trades")
+    # Tier 15: Support Staff
+    return (15, "Support Staff & Other Designations")
+
+
+@app.route("/api/department-hierarchy", methods=["GET"])
+@require_admin
+def get_department_hierarchy():
+    hod_id = (request.args.get("hod_id") or "").strip()
+    dept = (request.args.get("department") or "").strip()
+
+    db = SessionLocal()
+    try:
+        hod_emp = None
+        if hod_id:
+            hod_emp = db.query(Employee).filter(Employee.employee_id == hod_id).first()
+            if not hod_emp:
+                return jsonify({"success": False, "message": f"Employee '{hod_id}' not found."}), 404
+            if not dept:
+                dept = hod_emp.department
+
+        if not dept:
+            return jsonify({
+                "success": False,
+                "message": "Department could not be detected. The selected employee has no assigned department."
+            }), 400
+
+        # Query all active employees in this department
+        query = db.query(Employee).filter(
+            Employee.department == dept,
+            Employee.employee_status.ilike("active")
+        )
+        if hod_id:
+            query = query.filter(Employee.employee_id != hod_id)
+
+        dept_emps = query.all()
+
+        hod_rank = get_designation_seniority(hod_emp.designation)[0] if hod_emp else 0
+
+        # Group by designation & seniority
+        grouped = {}
+        for emp in dept_emps:
+            desig = (emp.designation or "").strip() or "General Staff"
+            rank, tier_name = get_designation_seniority(desig)
+
+            # Do not place individuals more senior than the HOD below the HOD
+            if hod_rank and rank < hod_rank:
+                continue
+
+            key = (rank, desig.upper())
+            if key not in grouped:
+                grouped[key] = {
+                    "rank": rank,
+                    "tier_name": tier_name,
+                    "designation": desig,
+                    "employees": []
+                }
+            grouped[key]["employees"].append({
+                "employee_id": emp.employee_id,
+                "employee_name": emp.employee_name or emp.employee_id,
+                "designation": emp.designation or "",
+                "department": emp.department or dept,
+                "email_id": emp.email_id or "",
+                "source_type": emp.source_type,
+            })
+
+        # Sort levels from highest seniority (lowest rank number) to lowest seniority (highest rank number)
+        sorted_keys = sorted(grouped.keys(), key=lambda k: (k[0], k[1]))
+        hierarchy_levels = []
+        for idx, k in enumerate(sorted_keys):
+            item = grouped[k]
+            desig_title = item["designation"].title()
+            hierarchy_levels.append({
+                "level_order": idx + 1,
+                "rank": item["rank"],
+                "tier_name": item["tier_name"],
+                "designation": item["designation"],
+                "stage_name": f"{desig_title} Review",
+                "employees": sorted(item["employees"], key=lambda x: x["employee_name"]),
+                "count": len(item["employees"]),
+            })
+
+        return jsonify({
+            "success": True,
+            "department": dept,
+            "hod": hod_emp.to_dict() if hod_emp else None,
+            "total_active_subordinates": len(dept_emps),
+            "hierarchy_levels": hierarchy_levels,
+        })
+    except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
     finally:
         db.close()
