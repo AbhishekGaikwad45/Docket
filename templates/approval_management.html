@@ -6,7 +6,6 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='approval-management.css') }}">
 {% endblock %}
 
-
 {% block content %}
 <div class="wf-container">
 
@@ -16,9 +15,7 @@
   <header class="wf-toolbar">
     <div class="wf-toolbar-left">
       <div class="wf-title-group">
-        <span class="wf-badge">ADMINISTRATION WORKFLOW BUILDER</span>
         <h1 class="wf-title">Approval Management</h1>
-        <p class="wf-subtitle">Design multi-level hierarchical approval chains, assign multiple approvers, and manage process workflows.</p>
       </div>
 
       <div class="wf-selector-wrap">
@@ -26,18 +23,25 @@
         <div class="wf-select-box">
           <select id="wf-select" class="wf-select">
             {% for wf in workflows %}
-              <option value="{{ wf.id }}" {% if loop.first %}selected{% endif %}>
-                {{ wf.name }} ({{ wf.code }})
-              </option>
+            <option value="{{ wf.id }}" {% if loop.first %}selected{% endif %}>
+              {{ wf.name }} ({{ wf.code }})
+            </option>
             {% endfor %}
           </select>
         </div>
         <button type="button" class="wf-btn wf-btn-outline" id="btn-rename-wf" title="Rename Process">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+          </svg>
           Rename
         </button>
         <button type="button" class="wf-btn wf-btn-danger-outline" id="btn-delete-wf" title="Delete Process">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
           Delete
         </button>
       </div>
@@ -45,17 +49,20 @@
 
     <div class="wf-toolbar-right">
       <button type="button" class="wf-btn wf-btn-secondary" id="btn-new-wf">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
         New Process
       </button>
       <button type="button" class="wf-btn wf-btn-outline" id="btn-add-stage">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
         Add Stage
       </button>
-      <button type="button" class="wf-btn wf-btn-primary" id="btn-save-wf">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-        <span id="save-btn-text">Save Workflow</span>
-      </button>
+
       <div class="wf-save-status" id="save-status-pill">
         <span class="status-dot"></span>
         <span class="status-text">All changes saved</span>
@@ -74,16 +81,36 @@
       <div class="canvas-header-bar">
         <div class="canvas-meta">
           <span class="meta-label">Hierarchical Execution Order:</span>
-          <span class="meta-desc">Subordinate Stages execute sequentially from bottom to top, culminating in Final Parent Approval.</span>
+          <span class="meta-desc">Subordinate Stages execute sequentially from bottom to top, culminating in Final
+            Parent Approval.</span>
         </div>
-        <div class="canvas-actions">
+        <div class="canvas-actions" style="display: flex; align-items: center;">
+          <button type="button" class="btn-text-sm" id="btn-zoom-out"
+            style="margin-right: 8px; display: flex; align-items: center; gap: 4px;" title="Zoom Out"><svg width="14"
+              height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg> Zoom Out</button>
+          <button type="button" class="btn-text-sm" id="btn-zoom-in"
+            style="margin-right: 16px; display: flex; align-items: center; gap: 4px;" title="Zoom In"><svg width="14"
+              height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <line x1="11" y1="8" x2="11" y2="14"></line>
+              <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg> Zoom In</button>
           <button type="button" class="btn-text-sm" id="btn-clear-approvers">Clear All Approvers</button>
         </div>
       </div>
 
       <!-- The visual pipeline container -->
-      <div class="wf-tree-pipeline" id="wf-tree-pipeline">
-        <!-- Rendered dynamically by JS -->
+      <div class="wf-pipeline-wrapper">
+        <div class="wf-tree-pipeline" id="wf-tree-pipeline">
+          <!-- Rendered dynamically by JS -->
+        </div>
       </div>
 
     </main>
@@ -101,9 +128,14 @@
       <!-- Palette Controls: Search & Filters -->
       <div class="palette-filters">
         <div class="palette-search-box">
-          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
           <input type="text" id="palette-search" placeholder="Search by name, ID, dept..." autocomplete="off">
-          <button type="button" id="palette-clear-search" class="clear-search-btn" style="display:none;">&times;</button>
+          <button type="button" id="palette-clear-search" class="clear-search-btn"
+            style="display:none;">&times;</button>
         </div>
 
         <div class="palette-filter-row">
@@ -128,7 +160,14 @@
 
       <div class="palette-footer">
         <span class="drag-hint">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="12" r="1"></circle>
+            <circle cx="9" cy="5" r="1"></circle>
+            <circle cx="9" cy="19" r="1"></circle>
+            <circle cx="15" cy="12" r="1"></circle>
+            <circle cx="15" cy="5" r="1"></circle>
+            <circle cx="15" cy="19" r="1"></circle>
+          </svg>
           Drag employee card onto a stage drop zone
         </span>
       </div>
@@ -153,7 +192,8 @@
     <form id="form-new-wf" class="wf-modal-body">
       <div class="wf-form-group">
         <label for="new-wf-name" class="wf-form-label">Process Name <span class="required">*</span></label>
-        <input type="text" id="new-wf-name" name="name" class="wf-form-input" placeholder="e.g. Gate Pass Approval" required>
+        <input type="text" id="new-wf-name" name="name" class="wf-form-input" placeholder="e.g. Gate Pass Approval"
+          required>
         <span class="wf-form-hint">Descriptive label shown to administrators and approvers.</span>
       </div>
       <div class="wf-form-group">
@@ -163,7 +203,8 @@
       </div>
       <div class="wf-form-group">
         <label for="new-wf-desc" class="wf-form-label">Description (Optional)</label>
-        <textarea id="new-wf-desc" name="description" class="wf-form-textarea" rows="3" placeholder="Briefly describe what this workflow is used for..."></textarea>
+        <textarea id="new-wf-desc" name="description" class="wf-form-textarea" rows="3"
+          placeholder="Briefly describe what this workflow is used for..."></textarea>
       </div>
       <div class="wf-modal-footer">
         <button type="button" class="wf-btn wf-btn-outline" id="modal-new-wf-cancel">Cancel</button>
@@ -236,7 +277,11 @@
     </div>
     <div class="wf-modal-body">
       <div class="palette-search-box" style="margin-bottom:14px;">
-        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
         <input type="text" id="assign-modal-search" placeholder="Quick search employee...">
       </div>
       <div class="assign-quick-list" id="assign-quick-list">
@@ -251,12 +296,13 @@
      WORKFLOW DESIGNER JAVASCRIPT ENGINE
      ========================================================================= -->
 <script>
-(function() {
-  'use strict';
+  (function () {
+    'use strict';
 
-  // Server-rendered initial payloads
-  const WORKFLOWS = {{ workflows|tojson }};
-  const EMPLOYEES = {{ employees|tojson }};
+    // Server-rendered initial payloads
+    const WORKFLOWS = {{ workflows| tojson
+  }};
+  const EMPLOYEES = {{ employees| tojson }};
 
   // State
   let currentWorkflowId = WORKFLOWS.length > 0 ? WORKFLOWS[0].id : null;
@@ -272,8 +318,6 @@
 
   // DOM Elements
   const wfSelect = document.getElementById('wf-select');
-  const btnSaveWf = document.getElementById('btn-save-wf');
-  const saveBtnText = document.getElementById('save-btn-text');
   const saveStatusPill = document.getElementById('save-status-pill');
   const statusText = saveStatusPill.querySelector('.status-text');
   const btnAddStage = document.getElementById('btn-add-stage');
@@ -290,6 +334,10 @@
   const paletteCount = document.getElementById('palette-emp-count');
   const canvasPipeline = document.getElementById('wf-tree-pipeline');
 
+  const btnZoomIn = document.getElementById('btn-zoom-in');
+  const btnZoomOut = document.getElementById('btn-zoom-out');
+  let currentZoom = 1;
+
   // Modals
   const modalNewWf = document.getElementById('modal-new-wf');
   const modalRenameWf = document.getElementById('modal-rename-wf');
@@ -303,9 +351,50 @@
     populateDeptFilter();
     renderPaletteEmployees();
     bindEvents();
+    bindZoomEvents();
 
     if (currentWorkflowId) {
       loadWorkflow(currentWorkflowId);
+    }
+  }
+
+  function applyZoom() {
+    if (canvasPipeline) {
+      canvasPipeline.style.transform = `scale(${currentZoom})`;
+
+      // If scale is small, use smaller cards for better overview
+      if (currentZoom <= 0.75) {
+        canvasPipeline.classList.add('zoomed-out');
+      } else {
+        canvasPipeline.classList.remove('zoomed-out');
+      }
+
+      // Expand height of container slightly when scaling down to avoid bottom clipping if needed
+      if (currentZoom < 1) {
+        canvasPipeline.style.marginBottom = `-${(1 - currentZoom) * 200}px`;
+      } else {
+        canvasPipeline.style.marginBottom = '0';
+      }
+    }
+  }
+
+  function bindZoomEvents() {
+    if (btnZoomIn) {
+      btnZoomIn.addEventListener('click', () => {
+        if (currentZoom < 1.5) {
+          currentZoom += 0.15;
+          applyZoom();
+        }
+      });
+    }
+
+    if (btnZoomOut) {
+      btnZoomOut.addEventListener('click', () => {
+        if (currentZoom > 0.3) {
+          currentZoom -= 0.15;
+          applyZoom();
+        }
+      });
     }
   }
 
@@ -671,6 +760,13 @@
     });
 
     // Rightmost "+ Add Department HOD" Card (spawns new HOD box to the right)
+    const addHodWrapper = document.createElement('div');
+    addHodWrapper.className = 'wf-dept-branch';
+
+    const addStem = document.createElement('div');
+    addStem.className = 'wf-branch-stem';
+    addHodWrapper.appendChild(addStem);
+
     const addHodCard = document.createElement('div');
     addHodCard.className = 'add-hod-column-card';
     addHodCard.id = 'add-hod-column-card';
@@ -682,15 +778,15 @@
       <div class="add-hod-desc">Drop employee card here to add another HOD column to the right, or click to choose from master</div>
     `;
 
-    addHodCard.addEventListener('dragover', function(e) {
+    addHodCard.addEventListener('dragover', function (e) {
       e.preventDefault();
       this.classList.add('drag-over');
       e.dataTransfer.dropEffect = 'copy';
     });
-    addHodCard.addEventListener('dragleave', function() {
+    addHodCard.addEventListener('dragleave', function () {
       this.classList.remove('drag-over');
     });
-    addHodCard.addEventListener('drop', async function(e) {
+    addHodCard.addEventListener('drop', async function (e) {
       e.preventDefault();
       this.classList.remove('drag-over');
       try {
@@ -705,11 +801,12 @@
       }
     });
 
-    addHodCard.addEventListener('click', function() {
+    addHodCard.addEventListener('click', function () {
       openAssignModalForNewBranch();
     });
 
-    branchesContainer.appendChild(addHodCard);
+    addHodWrapper.appendChild(addHodCard);
+    branchesContainer.appendChild(addHodWrapper);
     splitSection.appendChild(branchesContainer);
     canvasPipeline.appendChild(splitSection);
   }
@@ -773,12 +870,17 @@
     }
     headerLeft.appendChild(badge);
 
+    const ruleTag = document.createElement('span');
+    ruleTag.className = 'stage-rule-tag';
+    ruleTag.textContent = (stage.approvers && stage.approvers.length > 1) ? 'Any Approver' : 'Mandatory';
+    headerLeft.appendChild(ruleTag);
+
     const titleInput = document.createElement('input');
     titleInput.type = 'text';
     titleInput.className = 'stage-title-input';
     titleInput.value = stage.name || (type === 'stage1' ? 'Final Approval (Unit Head)' : (type === 'stage2' ? 'Stage 2: HR Head Review' : 'Department Review'));
     titleInput.title = 'Click to edit stage title';
-    titleInput.addEventListener('input', function() {
+    titleInput.addEventListener('input', function () {
       stage.name = this.value;
       markDirty();
     });
@@ -788,30 +890,7 @@
     const headerRight = document.createElement('div');
     headerRight.className = 'stage-header-right';
 
-    // Department Badge and Re-Sync Button for HOD card
-    if (type === 'hod' && stage.approvers && stage.approvers.length > 0) {
-      const hod = stage.approvers[0];
-      if (hod.department) {
-        const deptPill = document.createElement('span');
-        deptPill.className = 'stage-dept-pill';
-        deptPill.innerHTML = `🏢 ${hod.department}`;
-        headerRight.appendChild(deptPill);
-
-        const refreshBtn = document.createElement('button');
-        refreshBtn.type = 'button';
-        refreshBtn.className = 'stage-sync-btn';
-        refreshBtn.title = 'Re-generate subordinate hierarchy for this department';
-        refreshBtn.innerHTML = `
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-          Sync
-        `;
-        refreshBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          handleHodAssignedToBranch(stage.branch_id, hod);
-        });
-        headerRight.appendChild(refreshBtn);
-      }
-    }
+    // Department Badge and Re-Sync Button removed per user request to keep card simple
 
     // Delete buttons:
     if (type === 'hod' && hodCount > 1) {
@@ -842,11 +921,6 @@
       headerRight.appendChild(delBtn);
     }
     // Step 1 and Step 2 have NO delete button (constant foundation)
-
-    const ruleTag = document.createElement('span');
-    ruleTag.className = 'stage-rule-tag';
-    ruleTag.textContent = (stage.approvers && stage.approvers.length > 1) ? 'Any Approver' : 'Mandatory';
-    headerRight.appendChild(ruleTag);
 
     header.appendChild(headerRight);
     card.appendChild(header);
@@ -904,7 +978,12 @@
             <span class="approver-name">${appr.employee_name}</span>
             <span class="approver-meta">${appr.employee_id} • ${appr.designation || appr.department || 'Approver'}</span>
           </div>
-          <button type="button" class="approver-remove-btn" title="Unassign approver">&times;</button>
+          <button type="button" class="approver-remove-btn" title="Unassign approver">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         `;
 
         chip.querySelector('.approver-remove-btn').addEventListener('click', (e) => {
@@ -1186,8 +1265,6 @@
     if (!currentWorkflowId || !activeFlowData) return;
 
     setSaveStatus('saving', 'Saving workflow...');
-    btnSaveWf.disabled = true;
-
     try {
       const payload = {
         flow_data: activeFlowData,
@@ -1212,24 +1289,28 @@
       console.error(err);
       Portal.toast('Save failed: ' + err.message, 'error');
       setSaveStatus('unsaved', 'Error saving changes');
-    } finally {
-      btnSaveWf.disabled = false;
     }
+  }
+
+  let autoSaveTimeout;
+  function autoSave() {
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(() => {
+      if (isDirty && currentWorkflowId) {
+        saveWorkflow();
+      }
+    }, 1000);
   }
 
   function markDirty() {
     isDirty = true;
-    setSaveStatus('unsaved', 'Unsaved changes');
+    setSaveStatus('unsaved', 'Unsaved changes...');
+    autoSave();
   }
 
   function setSaveStatus(state, msg) {
     saveStatusPill.className = `wf-save-status ${state}`;
     statusText.textContent = msg;
-    if (state === 'saving') {
-      saveBtnText.textContent = 'Saving...';
-    } else {
-      saveBtnText.textContent = 'Save Workflow';
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -1260,8 +1341,8 @@
     const filtered = EMPLOYEES.filter(emp => {
       if (!q) return true;
       return (emp.employee_name || '').toLowerCase().includes(q) ||
-             (emp.employee_id || '').toLowerCase().includes(q) ||
-             (emp.department || '').toLowerCase().includes(q);
+        (emp.employee_id || '').toLowerCase().includes(q) ||
+        (emp.department || '').toLowerCase().includes(q);
     }).slice(0, 30); // limit to top 30 for performance
 
     if (filtered.length === 0) {
@@ -1297,7 +1378,7 @@
   // -------------------------------------------------------------------------
   function bindEvents() {
     // Process Switcher
-    wfSelect.addEventListener('change', async function() {
+    wfSelect.addEventListener('change', async function () {
       if (isDirty) {
         var discard = await Portal.confirm({
           title: 'Discard unsaved changes?',
@@ -1313,9 +1394,6 @@
       await loadWorkflow(this.value);
     });
 
-    // Save Button
-    btnSaveWf.addEventListener('click', saveWorkflow);
-
     // Add Stage Button
     btnAddStage.addEventListener('click', addStage);
 
@@ -1323,11 +1401,11 @@
     btnClearApprovers.addEventListener('click', clearAllApprovers);
 
     // Palette Search Input
-    paletteSearch.addEventListener('input', function() {
+    paletteSearch.addEventListener('input', function () {
       paletteClearSearch.style.display = this.value ? 'block' : 'none';
       renderPaletteEmployees();
     });
-    paletteClearSearch.addEventListener('click', function() {
+    paletteClearSearch.addEventListener('click', function () {
       paletteSearch.value = '';
       this.style.display = 'none';
       renderPaletteEmployees();
@@ -1335,7 +1413,7 @@
 
     // Source Filter Pills
     sourcePills.querySelectorAll('.source-pill').forEach(pill => {
-      pill.addEventListener('click', function() {
+      pill.addEventListener('click', function () {
         sourcePills.querySelectorAll('.source-pill').forEach(p => p.classList.remove('active'));
         this.classList.add('active');
         renderPaletteEmployees();
@@ -1346,7 +1424,7 @@
     paletteDeptFilter.addEventListener('change', renderPaletteEmployees);
 
     // Modal: Quick Assign Search
-    document.getElementById('assign-modal-search').addEventListener('input', function() {
+    document.getElementById('assign-modal-search').addEventListener('input', function () {
       renderAssignModalList(this.value);
     });
     document.getElementById('modal-assign-close').addEventListener('click', () => {
@@ -1364,7 +1442,7 @@
     document.getElementById('modal-new-wf-cancel').addEventListener('click', () => {
       modalNewWf.classList.remove('open');
     });
-    document.getElementById('form-new-wf').addEventListener('submit', async function(e) {
+    document.getElementById('form-new-wf').addEventListener('submit', async function (e) {
       e.preventDefault();
       const name = document.getElementById('new-wf-name').value.trim();
       const code = document.getElementById('new-wf-code').value.trim();
@@ -1409,7 +1487,7 @@
     document.getElementById('modal-rename-wf-cancel').addEventListener('click', () => {
       modalRenameWf.classList.remove('open');
     });
-    document.getElementById('form-rename-wf').addEventListener('submit', async function(e) {
+    document.getElementById('form-rename-wf').addEventListener('submit', async function (e) {
       e.preventDefault();
       const name = document.getElementById('rename-wf-name').value.trim();
       const description = document.getElementById('rename-wf-desc').value.trim();
@@ -1487,7 +1565,7 @@
     });
 
     // Auto-warn on page unload if changes are unsaved
-    window.addEventListener('beforeunload', function(e) {
+    window.addEventListener('beforeunload', function (e) {
       if (isDirty) {
         e.preventDefault();
         e.returnValue = '';
@@ -1495,6 +1573,6 @@
     });
   }
 
-})();
+}) ();
 </script>
 {% endblock %}

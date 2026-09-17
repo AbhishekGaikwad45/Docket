@@ -160,6 +160,7 @@
                    type="email"
                    value="{{ emp.email_id or '' }}"
                    placeholder="Add email ID"
+                   title="{{ emp.email_id or 'No email ID yet' }}"
                    aria-label="Email for {{ emp.employee_name }}">
             <button class="email-edit-save" type="button">Save</button>
           </div>
