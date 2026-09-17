@@ -1,0 +1,462 @@
+/* =============================================================================
+   Sign-in and OTP pages.
+
+   login.html and verify_otp.html each carried their own ~425-line copy of
+   these rules, which had drifted apart. One copy now, one look.
+   ============================================================================= */
+
+:root{
+  --jsw-blue:#0756b9;
+  --jsw-blue-2:#0b6bd5;
+  --jsw-dark:#102d63;
+  --jsw-red:#ed1c24;
+  --ink:#13254a;
+  --muted:#6d7f9f;
+  --line:#dce6f4;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  color:var(--ink);
+  background:#f4f7fb;
+}
+
+:focus-visible{
+  outline:2px solid var(--jsw-blue);
+  outline-offset:2px;
+  border-radius:4px;
+}
+
+#login-screen{
+  min-height:100vh;
+  display:flex;
+  overflow:hidden;
+  position:relative;
+  background:
+    radial-gradient(circle at 75% 18%,rgba(52,126,220,.20),transparent 28%),
+    linear-gradient(120deg,#f9fbff 0%,#eef5fd 53%,#dceafb 100%);
+}
+
+/* ---------- Left: brand panel ---------- */
+.login-left{
+  width:50%;
+  min-height:100vh;
+  padding:52px 7vw 80px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.login-left:before{
+  content:"";
+  position:absolute;
+  width:650px;
+  height:650px;
+  right:-330px;
+  top:-230px;
+  border-radius:50%;
+  background:rgba(31,108,198,.08);
+}
+
+.login-left:after{
+  content:"";
+  position:absolute;
+  left:-80px;
+  bottom:-190px;
+  width:760px;
+  height:330px;
+  border-radius:50% 50% 0 0;
+  background:linear-gradient(145deg,var(--jsw-blue) 0 60%,var(--jsw-red) 61% 65%,#dbe8f8 66%);
+  transform:rotate(-8deg);
+}
+
+.jsw-brand{
+  position:absolute;
+  top:48px;
+  left:7vw;
+  z-index:2;
+}
+
+.jsw-logo{
+  width:150px;
+  height:auto;
+  display:block;
+}
+
+.hero-copy{
+  position:relative;
+  z-index:2;
+  max-width:520px;
+  margin-top:90px;
+}
+
+.hero-line{
+  width:68px;
+  height:5px;
+  border-radius:4px;
+  background:linear-gradient(90deg,var(--jsw-blue) 0 70%,var(--jsw-red) 70%);
+  margin-bottom:26px;
+}
+
+.hero-copy h1{
+  margin:0;
+  font-size:clamp(42px,4.2vw,68px);
+  line-height:1.02;
+  letter-spacing:-2.5px;
+  color:#12285b;
+}
+
+.hero-copy h1 span{color:#1765c4}
+
+.hero-copy p{
+  margin:28px 0 0;
+  max-width:52ch;
+  font-size:17px;
+  line-height:1.7;
+  color:#667b9c;
+}
+
+.values{
+  margin-top:28px;
+  display:flex;
+  flex-wrap:wrap;
+  font-size:12px;
+  letter-spacing:2.2px;
+  font-weight:700;
+  color:#617596;
+}
+
+.values span{
+  padding:0 15px;
+  border-right:1px solid #b9c8dd;
+}
+
+.values span:first-child{padding-left:0}
+.values span:last-child{border:0}
+
+/* ---------- Right: card panel ---------- */
+.login-right{
+  width:50%;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:45px 6vw 45px 3vw;
+  position:relative;
+  background:
+    linear-gradient(145deg,rgba(8,48,103,.94),rgba(5,72,145,.72)),
+    radial-gradient(circle at 70% 55%,#3e94e8,#062d61 70%);
+}
+
+.login-right:before,
+.login-right:after{
+  content:"";
+  position:absolute;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.login-right:before{width:620px;height:620px;right:-300px;top:-170px}
+.login-right:after{width:430px;height:430px;left:-230px;bottom:-210px}
+
+.port-graphic{
+  position:absolute;
+  inset:0;
+  opacity:.24;
+  overflow:hidden;
+}
+
+.crane{
+  position:absolute;
+  right:9%;
+  bottom:14%;
+  width:430px;
+  height:300px;
+}
+
+.crane .tower{
+  position:absolute;
+  right:80px;
+  bottom:0;
+  width:24px;
+  height:260px;
+  background:#d9e7f7;
+  transform:skew(-4deg);
+}
+
+.crane .arm{
+  position:absolute;
+  right:0;
+  bottom:245px;
+  width:430px;
+  height:12px;
+  background:#e7f0fb;
+  transform:rotate(-4deg);
+  transform-origin:right center;
+}
+
+.crane .cable{
+  position:absolute;
+  right:42px;
+  bottom:5px;
+  width:2px;
+  height:250px;
+  background:#e7f0fb;
+  transform:rotate(11deg);
+}
+
+.water{
+  position:absolute;
+  left:-10%;
+  right:-10%;
+  bottom:0;
+  height:25%;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(255,255,255,.10) 0 2px,
+    transparent 2px 12px
+  );
+}
+
+.login-card{
+  width:min(470px,100%);
+  position:relative;
+  z-index:3;
+  padding:40px 44px 34px;
+  border-radius:24px;
+  background:rgba(255,255,255,.98);
+  box-shadow:0 28px 70px rgba(0,22,61,.30);
+  border:1px solid rgba(255,255,255,.8);
+}
+
+.card-logo{
+  width:74px;
+  height:74px;
+  margin:0 auto 18px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#edf5ff;
+}
+
+.card-logo img{width:62px;height:62px;object-fit:contain;display:block}
+
+.login-card h1{
+  margin:0;
+  text-align:center;
+  font-size:28px;
+  letter-spacing:-.7px;
+  color:#12295b;
+}
+
+.login-sub{
+  margin:8px 0 24px;
+  text-align:center;
+  color:#7183a1;
+  font-size:14px;
+}
+
+/* ---------- Tabs ---------- */
+.tab-container{
+  display:flex;
+  background:#eaf1fb;
+  padding:4px;
+  border-radius:12px;
+  margin-bottom:24px;
+  gap:4px;
+}
+
+.tab-btn{
+  flex:1;
+  border:0;
+  background:transparent;
+  padding:10px;
+  border-radius:8px;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:700;
+  color:#596d8e;
+  cursor:pointer;
+  transition:background .2s ease,color .2s ease;
+}
+
+.tab-btn[aria-selected="true"]{
+  background:#fff;
+  color:var(--jsw-blue);
+  box-shadow:0 2px 6px rgba(7,86,185,.12);
+}
+
+.tab-pane[hidden]{display:none}
+
+/* ---------- Form ---------- */
+.login-error{
+  padding:11px 13px;
+  border-radius:10px;
+  background:#fff0f1;
+  color:#c51d2a;
+  border:1px solid #ffd0d4;
+  font-size:13px;
+  margin:0 0 16px;
+}
+
+.login-notice{
+  padding:11px 13px;
+  border-radius:10px;
+  background:#edf6ff;
+  color:#0756b9;
+  border:1px solid #d4e7fb;
+  font-size:13px;
+  margin:0 0 16px;
+}
+
+.login-field{margin-bottom:18px}
+
+.login-field label{
+  display:block;
+  margin-bottom:8px;
+  font-size:13px;
+  font-weight:700;
+  color:#34496d;
+}
+
+.input-wrap{position:relative}
+
+.input-icon{
+  position:absolute;
+  left:15px;
+  top:50%;
+  transform:translateY(-50%);
+  display:grid;
+  place-items:center;
+  color:#7890b3;
+  pointer-events:none;
+}
+
+.login-field input{
+  width:100%;
+  height:52px;
+  border:1px solid #cfdced;
+  border-radius:12px;
+  padding:0 16px 0 45px;
+  font-family:inherit;
+  font-size:15px;
+  color:#152b54;
+  background:#fbfdff;
+  outline:none;
+  transition:border-color .2s ease,box-shadow .2s ease;
+}
+
+.login-field input:focus{
+  border-color:#1768c9;
+  box-shadow:0 0 0 4px rgba(23,104,201,.12);
+  background:#fff;
+}
+
+/* The OTP field reads as a code, not as prose. */
+.otp-input{
+  text-align:center;
+  padding-left:16px !important;
+  font-size:22px !important;
+  font-weight:700;
+  letter-spacing:10px;
+}
+
+.primary{
+  width:100%;
+  height:52px;
+  border:0;
+  border-radius:12px;
+  cursor:pointer;
+  color:#fff;
+  font-family:inherit;
+  font-size:15px;
+  font-weight:700;
+  background-image:linear-gradient(135deg,var(--jsw-blue),var(--jsw-blue-2));
+  box-shadow:0 10px 22px rgba(7,86,185,.28);
+  transition:box-shadow .18s ease;
+}
+
+.primary:hover{box-shadow:0 14px 28px rgba(7,86,185,.35)}
+.primary:disabled{opacity:.7;cursor:progress;box-shadow:none}
+
+.security-note{
+  display:flex;
+  gap:11px;
+  align-items:flex-start;
+  margin-top:18px;
+  padding:12px;
+  border-radius:12px;
+  background:#f1f7ff;
+  color:#647999;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.security-icon{
+  flex:0 0 26px;
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  color:#0a69ce;
+  background:#dceeff;
+}
+
+.back-link{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:18px;
+  color:#5f7395;
+  font-size:13px;
+  font-weight:600;
+  text-decoration:none;
+}
+
+.back-link:hover{color:var(--jsw-blue)}
+
+.card-footer{
+  margin-top:22px;
+  padding-top:16px;
+  border-top:1px solid #e3eaf4;
+  text-align:center;
+  color:#8a9ab3;
+  font-size:11px;
+  letter-spacing:.8px;
+}
+
+/* ---------- Responsive ---------- */
+@media(max-width:900px){
+  #login-screen{display:block}
+  .login-left,.login-right{width:100%;min-height:auto}
+  .login-left{padding:125px 30px 90px}
+  .login-right{padding:45px 22px 65px;min-height:650px}
+  .jsw-brand{left:30px}
+  .hero-copy{margin-top:40px}
+  .hero-copy h1{font-size:48px}
+  .crane{opacity:.5;right:-80px}
+}
+
+@media(max-width:520px){
+  .login-left{padding:120px 24px 70px}
+  .login-right{padding:30px 16px 50px}
+  .login-card{padding:30px 20px 24px;border-radius:18px}
+  .login-card h1{font-size:24px}
+  .hero-copy h1{font-size:38px}
+  .values{line-height:2.3}
+  .values span{padding:0 9px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{
+    animation-duration:.01ms !important;
+    transition-duration:.01ms !important;
+  }
+}

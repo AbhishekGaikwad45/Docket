@@ -2,7 +2,7 @@
 {% block title %}My approvals{% endblock %}
 {% set active = 'approvals' %}
 {% block content %}
-<p class="page-title">My approvals</p>
+<h1 class="page-title">My approvals</h1>
 <p class="page-sub">
   {% if role == 'dept_head' %}Requests waiting on department head approval.
   {% elif role == 'unit_head' %}Requests waiting on unit head approval.
@@ -21,11 +21,13 @@
         </div>
         <span class="status-pill status-pending">Pending</span>
       </div>
-      <div class="queue-details">
+      <p class="queue-details">
         Check-in {{ r.checkin }} &middot; Check-out {{ r.checkout }} &middot; Purpose: {{ r.purpose or '&mdash;' }}
-      </div>
+      </p>
       <form method="post" action="{{ url_for('decide', req_id=r.id) }}">
-        <textarea name="remark" placeholder="Add a remark (required if rejecting)" style="margin-bottom:10px;min-height:44px"></textarea>
+        <label class="visually-hidden" for="remark-{{ r.id }}">Remark for request {{ r.id }}</label>
+        <textarea id="remark-{{ r.id }}" class="queue-remark" name="remark"
+                  placeholder="Add a remark (required if rejecting)"></textarea>
         <div class="queue-actions">
           <button class="ok-btn" type="submit" name="decision" value="approve">Approve</button>
           <button class="danger-btn" type="submit" name="decision" value="reject">Reject</button>
@@ -34,7 +36,7 @@
     </div>
     {% endfor %}
   {% else %}
-    <p class="empty">Nothing waiting on you right now.</p>
+    <p class="empty">Nothing is waiting on you right now.</p>
   {% endif %}
 </div>
 {% endblock %}

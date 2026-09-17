@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0756b9">
+  <title>{% block title %}Sign in{% endblock %} - User Management Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/logo31.png') }}">
+</head>
+
+<body>
+<div id="login-screen">
+
+  <section class="login-left">
+    <div class="jsw-brand">
+      <img class="jsw-logo"
+           src="{{ url_for('static', filename='img/logo31.png') }}"
+           alt="JSW Dharamtar Port">
+    </div>
+
+    <div class="hero-copy">
+      <div class="hero-line" aria-hidden="true"></div>
+      <h1>Building<br><span>A Stronger</span><br>Tomorrow</h1>
+
+      <div class="values" aria-hidden="true">
+        <span>PEOPLE</span>
+        <span>PERFORMANCE</span>
+        <span>PROGRESS</span>
+      </div>
+
+      <p>
+        Empowering a sustainable future through innovation,
+        collaboration and excellence.
+      </p>
+    </div>
+  </section>
+
+  <section class="login-right">
+    <div class="port-graphic" aria-hidden="true">
+      <div class="crane">
+        <div class="tower"></div>
+        <div class="arm"></div>
+        <div class="cable"></div>
+      </div>
+      <div class="water"></div>
+    </div>
+
+    <main class="login-card">
+      <div class="card-logo" aria-hidden="true">
+        <img src="{{ url_for('static', filename='img/logo31.png') }}" alt="">
+      </div>
+
+      <h1>User Management Portal</h1>
+      <p class="login-sub">{% block subtitle %}{% endblock %}</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <p class="{{ 'login-notice' if category in ['success', 'info', 'message'] else 'login-error' }}" role="alert">{{ message }}</p>
+        {% endfor %}
+      {% endwith %}
+
+      {% block card %}{% endblock %}
+
+      <p class="card-footer">SECURE &nbsp;|&nbsp; RELIABLE &nbsp;|&nbsp; EMPLOYEE FIRST</p>
+    </main>
+  </section>
+
+</div>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

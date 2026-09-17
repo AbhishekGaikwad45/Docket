@@ -36,7 +36,7 @@ def require_admin(view):
     @wraps(view)
     def wrapped_view(*args, **kwargs):
         if not session.get("is_admin"):
-            flash("Admin access is required to open the Administration panel.")
+            flash("Admin access is required to open the Administration panel.", "error")
             return redirect(url_for("dashboard"))
         return view(*args, **kwargs)
     return wrapped_view
@@ -73,18 +73,18 @@ def admin_login():
     password = request.form.get("password", "").strip()
 
     if not username or not password:
-        flash("Enter both username and password.")
+        flash("Enter both username and password.", "error")
         return redirect(url_for("login"))
 
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user or not user.check_password(password):
-            flash("Invalid admin username or password.")
+            flash("Invalid admin username or password.", "error")
             return redirect(url_for("login"))
 
         if not user.is_active:
-            flash("Your admin account is currently disabled.")
+            flash("Your admin account is currently disabled.", "error")
             return redirect(url_for("login"))
 
         # Update last login
@@ -98,7 +98,7 @@ def admin_login():
         session["role"] = user.role or "admin"
         session["is_admin"] = user.is_admin
 
-        flash(f"Signed in successfully as {user.username}.")
+        flash(f"Signed in successfully as {user.username}.", "success")
         return redirect(url_for("admin_module"))
     finally:
         db.close()
@@ -108,26 +108,26 @@ def admin_login():
 def send_otp():
     emp_id = request.form.get("emp_id", "").strip()
     if not emp_id:
-        flash("Enter your employee ID.")
+        flash("Enter your employee ID.", "error")
         return redirect(url_for("login"))
 
     db = SessionLocal()
     try:
         emp = db.query(Employee).filter(Employee.employee_id == emp_id).first()
         if not emp:
-            flash(f"Employee ID '{emp_id}' not found in Mantra database. Please contact Admin or run Mantra Sync.")
+            flash(f"Employee ID '{emp_id}' not found in Mantra database. Please contact Admin or run Mantra Sync.", "error")
             return redirect(url_for("login"))
 
         # Generate 6-digit OTP
         otp_code = f"{random.randint(100000, 999999)}"
 
         if not emp.email_id:
-            flash("No email ID is registered for this employee. Please contact the administrator.")
+            flash("No email ID is registered for this employee. Please contact the administrator.", "error")
             return redirect(url_for("login"))
 
         # Only allow verification after the message has been accepted by SMTP.
         if not send_otp_email(emp.email_id, otp_code, emp.employee_name):
-            flash("Unable to send the OTP email. Please contact the administrator and try again.")
+            flash("Unable to send the OTP email. Please contact the administrator and try again.", "error")
             return redirect(url_for("login"))
 
         session["pending_emp_id"] = emp_id
@@ -135,7 +135,7 @@ def send_otp():
         session["pending_emp_email"] = emp.email_id
         session["pending_emp_dept"] = emp.department
         session["pending_otp"] = otp_code
-        flash(f"OTP sent to your registered email ({emp.email_id[:3]}***@...).")
+        flash(f"OTP sent to your registered email ({emp.email_id[:3]}***@...).", "success")
 
     finally:
         db.close()
@@ -162,7 +162,7 @@ def verify_otp():
 
     # Verify matching OTP or demo bypass (123456)
     if code != expected_otp and code != "123456":
-        flash("Invalid verification code. Please enter the 6-digit code sent.")
+        flash("Invalid verification code. Please enter the 6-digit code sent.", "error")
         return redirect(url_for("verify_otp_form"))
 
     db = SessionLocal()
@@ -331,7 +331,7 @@ def add_user():
         msg = "Employee ID and Employee Name are required."
         if is_ajax:
             return jsonify({"success": False, "message": msg}), 400
-        flash(msg)
+        flash(msg, "error")
         return redirect(url_for("admin_module"))
 
     db = SessionLocal()
@@ -341,7 +341,7 @@ def add_user():
             msg = f"A user with Employee ID '{employee_id}' already exists."
             if is_ajax:
                 return jsonify({"success": False, "message": msg}), 400
-            flash(msg)
+            flash(msg, "error")
             return redirect(url_for("admin_module"))
 
         new_emp = Employee(
@@ -384,7 +384,7 @@ def add_user():
         msg = f"User '{employee_name}' (ID: {employee_id}) added successfully."
         if is_ajax:
             return jsonify({"success": True, "message": msg, "user": new_emp.to_dict()})
-        flash(msg)
+        flash(msg, "success")
         return redirect(url_for("admin_module"))
     except Exception as e:
         db.rollback()
@@ -392,7 +392,7 @@ def add_user():
         msg = f"Failed to add user: {str(e)}"
         if is_ajax:
             return jsonify({"success": False, "message": msg}), 500
-        flash(msg)
+        flash(msg, "error")
         return redirect(url_for("admin_module"))
     finally:
         db.close()
@@ -418,7 +418,7 @@ def edit_user(employee_id):
         msg = "Employee Name cannot be empty."
         if is_ajax:
             return jsonify({"success": False, "message": msg}), 400
-        flash(msg)
+        flash(msg, "error")
         return redirect(url_for("admin_module"))
 
     db = SessionLocal()
@@ -428,7 +428,7 @@ def edit_user(employee_id):
             msg = f"User '{employee_id}' not found."
             if is_ajax:
                 return jsonify({"success": False, "message": msg}), 404
-            flash(msg)
+            flash(msg, "error")
             return redirect(url_for("admin_module"))
 
         emp.employee_name = employee_name
@@ -453,7 +453,7 @@ def edit_user(employee_id):
         msg = f"User '{employee_name}' (ID: {employee_id}) updated successfully."
         if is_ajax:
             return jsonify({"success": True, "message": msg, "user": emp.to_dict()})
-        flash(msg)
+        flash(msg, "success")
         return redirect(url_for("admin_module"))
     except Exception as e:
         db.rollback()
@@ -461,7 +461,7 @@ def edit_user(employee_id):
         msg = f"Failed to update user: {str(e)}"
         if is_ajax:
             return jsonify({"success": False, "message": msg}), 500
-        flash(msg)
+        flash(msg, "error")
         return redirect(url_for("admin_module"))
     finally:
         db.close()
@@ -478,7 +478,7 @@ def delete_user(employee_id):
         msg = "You cannot delete your own logged-in account."
         if is_ajax:
             return jsonify({"success": False, "message": msg}), 400
-        flash(msg)
+        flash(msg, "error")
         return redirect(url_for("admin_module"))
 
     db = SessionLocal()
@@ -488,7 +488,7 @@ def delete_user(employee_id):
             msg = f"User '{employee_id}' not found."
             if is_ajax:
                 return jsonify({"success": False, "message": msg}), 404
-            flash(msg)
+            flash(msg, "error")
             return redirect(url_for("admin_module"))
 
         user_name = emp.employee_name
@@ -508,7 +508,7 @@ def delete_user(employee_id):
         msg = f"User '{user_name}' (ID: {employee_id}) was deleted successfully."
         if is_ajax:
             return jsonify({"success": True, "message": msg})
-        flash(msg)
+        flash(msg, "success")
         return redirect(url_for("admin_module"))
     except Exception as e:
         db.rollback()
@@ -516,7 +516,7 @@ def delete_user(employee_id):
         msg = f"Failed to delete user: {str(e)}"
         if is_ajax:
             return jsonify({"success": False, "message": msg}), 500
-        flash(msg)
+        flash(msg, "error")
         return redirect(url_for("admin_module"))
     finally:
         db.close()
@@ -539,10 +539,10 @@ def sync_mantra_admin():
 
     if result["success"]:
         source_label = "Staff" if source == "staff" else ("Associates" if source == "associates" else "Staff & Associates")
-        flash(f"Mantra Sync Successful: {result['total_upserted']} {source_label} records synced from JSW_Dharamtar in {result['duration_seconds']}s.")
+        flash(f"Mantra Sync Successful: {result['total_upserted']} {source_label} records synced from JSW_Dharamtar in {result['duration_seconds']}s.", "success")
     else:
         err_msg = ", ".join(result["errors"])
-        flash(f"Mantra Sync Failed: {err_msg}")
+        flash(f"Mantra Sync Failed: {err_msg}", "error")
 
     # Pass selected_source so the table automatically filters and displays the synced employee type!
     return render_admin_module(sync_result=result, sync_records=result.get("records", []), selected_source=source)
@@ -695,7 +695,7 @@ def submit_guest_house():
     purpose = request.form.get("purpose", "").strip()
 
     if not guest or not checkin or not checkout:
-        flash("Fill in guest name and both dates.")
+        flash("Fill in guest name and both dates.", "error")
         return redirect(url_for("admin_module"))
 
     new_req = GuestHouseRequest(
@@ -714,10 +714,10 @@ def submit_guest_house():
     try:
         db.add(new_req)
         db.commit()
-        flash(f"Guest house request {new_req.id} submitted successfully.")
+        flash(f"Guest house request {new_req.id} submitted successfully.", "success")
     except Exception as e:
         db.rollback()
-        flash(f"Error saving request: {e}")
+        flash(f"Error saving request: {e}", "error")
     finally:
         db.close()
 
@@ -1248,7 +1248,7 @@ def decide(req_id):
 
         if decision == "reject":
             if not remark:
-                flash("Add a remark before rejecting.")
+                flash("Add a remark before rejecting.", "error")
                 return redirect(url_for("approvals"))
             r.stage = "rejected"
             r.remark = remark
@@ -1266,7 +1266,7 @@ def decide(req_id):
             db.commit()
     except Exception as e:
         db.rollback()
-        flash(f"Error updating request: {e}")
+        flash(f"Error updating request: {e}", "error")
     finally:
         db.close()
 
