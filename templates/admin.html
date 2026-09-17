@@ -2,203 +2,132 @@
 {% block title %}User Management - User Management Portal{% endblock %}
 {% set active = 'admin' %}
 
-{% block head %}
-<style>
-  .user-table-wrap {
-    background: #fff;
-    border: 1px solid #DCE6F4;
-    border-radius: 12px 12px 0 0;
-    overflow-x: auto;
-    box-shadow: 0 4px 16px rgba(18, 41, 91, 0.04);
-  }
-
-  .mantra-toggle-card {
-    background: #fff;
-    border: 1px solid #DCE6F4;
-    border-radius: 14px;
-    margin-bottom: 22px;
-    padding: 20px 24px;
-    box-shadow: 0 4px 16px rgba(18, 41, 91, 0.04);
-  }
-
-  .user-card-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-
-  .user-card-heading h3 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 800;
-    color: #12295B;
-  }
-
-  .source-badge {
-    display: inline-block;
-    padding: 2.5px 8px;
-    border-radius: 6px;
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: .3px;
-  }
-
-  .source-badge-staff {
-    background: #EFF6FF;
-    color: #1D4ED8;
-    border: 1px solid #BFDBFE;
-  }
-
-  .source-badge-assoc {
-    background: #FAF5FF;
-    color: #7E22CE;
-    border: 1px solid #E9D5FF;
-  }
-
-  .source-badge-manual {
-    background: #F1F5F9;
-    color: #475569;
-    border: 1px solid #E2E8F0;
-  }
-
-  .source-filter-highlight {
-    border-color: #0756b9 !important;
-    font-weight: 600 !important;
-    background: #F0F7FF !important;
-  }
-</style>
-{% endblock %}
-
 {% block content %}
-<!-- Page Header -->
 <div class="user-mgmt-header-row">
   <div>
-    <h1 class="page-title" style="margin:0 0 6px;">User Management Portal</h1>
-    <p class="page-sub" style="margin:0;">Manage users, employee records, email IDs, and synchronize Mantra records.</p>
+    <h1 class="page-title">User Management</h1>
+    <p class="page-sub" style="margin-bottom:0;">
+      Manage user accounts, employee records and email IDs, and sync the employee master from Mantra.
+    </p>
   </div>
-  <div style="display:flex;gap:10px;align-items:center;">
-    <button class="btn-primary-action" type="button" onclick="openAddUserModal()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      + Add New User
+  <div class="table-actions">
+    <button class="btn-primary-action" type="button" id="btn-add-user">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Add user
     </button>
-    <button class="btn-secondary-action" type="button" onclick="toggleMantraSection()">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-      Mantra Sync
+    <button class="btn-secondary-action"
+            type="button"
+            id="btn-toggle-sync"
+            aria-expanded="{{ 'true' if sync_result is not none else 'false' }}"
+            aria-controls="sync-panel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+      Mantra sync
     </button>
   </div>
 </div>
 
-<!-- Collapsible Mantra Sync Panel -->
-<div id="mantra-sync-panel" class="mantra-toggle-card" style="display:{% if sync_result is not none %}block{% else %}none{% endif %};">
-  <div class="user-card-heading">
+<!-- Mantra sync, collapsed until asked for -->
+<section class="sync-panel" id="sync-panel" aria-label="Mantra employee sync" {% if sync_result is none %}hidden{% endif %}>
+  <div class="sync-panel-heading">
     <div>
-      <h3>Mantra Employee Master Synchronization</h3>
-      <p style="margin:3px 0 0;font-size:12.5px;color:#64748B;">
-        Sync employees from MS SQL Server (<code>JSW_Dharamtar</code> &middot; 172.21.30.101) into PostgreSQL.
-      </p>
+      <h3>Employee master synchronisation</h3>
+      <p>Pulls employees from MS SQL Server (<code>JSW_Dharamtar</code> &middot; 172.21.30.101) into PostgreSQL.</p>
     </div>
-    <span class="mantra-count" style="margin:0;">{{ employee_count or 0 }} Employees in Database</span>
+    <span class="sync-count">{{ employee_count or 0 }} employees in database</span>
   </div>
 
-  <form method="post" action="{{ url_for('sync_mantra_admin') }}" class="mantra-sync-form" style="margin-top:14px;">
-    <label class="mantra-check">
+  <form method="post" action="{{ url_for('sync_mantra_admin') }}" class="sync-form" id="sync-form">
+    <label class="sync-check">
       <input type="checkbox" name="active_only" value="true" checked>
-      <span>Sync active employees only</span>
+      <span>Active employees only</span>
     </label>
-    <label class="mantra-source">
-      <span>Source:</span>
-      <select name="source">
-        <option value="both" {% if selected_source == 'both' %}selected{% endif %}>Staff &amp; Associates (All)</option>
-        <option value="staff" {% if selected_source == 'staff' %}selected{% endif %}>Staff Only</option>
-        <option value="associates" {% if selected_source == 'associates' %}selected{% endif %}>Associates Only</option>
+    <label class="sync-source">
+      <span>Source</span>
+      <select name="source" aria-label="Sync source">
+        <option value="both" {% if selected_source == 'both' %}selected{% endif %}>Staff &amp; associates</option>
+        <option value="staff" {% if selected_source == 'staff' %}selected{% endif %}>Staff only</option>
+        <option value="associates" {% if selected_source == 'associates' %}selected{% endif %}>Associates only</option>
       </select>
     </label>
-    <button class="mantra-sync-button" type="submit">Sync from Mantra Now</button>
+    <button class="sync-submit" type="submit" id="btn-run-sync">Sync from Mantra</button>
   </form>
 
   {% if sync_result is not none %}
-  <div style="margin-top:14px;padding:12px 16px;border-radius:10px;background:#EDF6FF;border:1px solid #D4E7FB;font-size:13.5px;color:#0756B9;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+  <div class="sync-outcome">
     <div>
-      <strong>Sync Outcome:</strong>
-      {{ sync_result.total_fetched }} fetched &middot; {{ sync_result.total_upserted }} saved in database in {{ sync_result.duration_seconds }}s.
+      <strong>Last sync:</strong>
+      {{ sync_result.total_fetched }} fetched &middot; {{ sync_result.total_upserted }} saved in {{ sync_result.duration_seconds }}s.
       {% if selected_source == 'staff' %}
-        <span style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:6px;background:#BFDBFE;color:#1E40AF;font-weight:700;font-size:12px;">Staff Only Synced</span>
+        <span class="sync-scope-tag sync-scope-staff">Staff only</span>
       {% elif selected_source == 'associates' %}
-        <span style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:6px;background:#DDD6FE;color:#5B21B6;font-weight:700;font-size:12px;">Associates Only Synced</span>
+        <span class="sync-scope-tag sync-scope-assoc">Associates only</span>
       {% endif %}
     </div>
-    <span style="font-size:12.5px;color:#3B82F6;">Table filtered to synced source</span>
+    <span class="sync-outcome-note">Table filtered to the synced source</span>
   </div>
   {% endif %}
-</div>
+</section>
 
-<!-- Search and Filter Toolbar -->
+<!-- Search and filters -->
 <div class="user-mgmt-toolbar">
   <div class="toolbar-left">
     <div class="toolbar-search-wrap">
-      <span class="toolbar-search-icon">🔍</span>
-      <input type="text"
+      <span class="toolbar-search-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+      </span>
+      <label class="visually-hidden" for="user-search-input">Search users</label>
+      <input type="search"
              id="user-search-input"
              class="toolbar-search-input"
-             placeholder="Search by name, ID, email, dept..."
-             oninput="handleSearch()">
+             placeholder="Search by name, ID, email or department">
     </div>
 
-    <!-- Employee Type / Source Filter (Staff, Associates, All) -->
+    <label class="visually-hidden" for="source-filter">Employee type</label>
     <select id="source-filter"
-            class="toolbar-select {% if selected_source in ['staff', 'associates'] %}source-filter-highlight{% endif %}"
-            onchange="handleFilter()">
-      <option value="all" {% if selected_source not in ['staff', 'associates', 'manual'] %}selected{% endif %}>
-        All Types ({{ employee_count }})
-      </option>
-      <option value="staff" {% if selected_source == 'staff' %}selected{% endif %}>
-        Staff Only ({{ staff_count }})
-      </option>
-      <option value="associates" {% if selected_source == 'associates' %}selected{% endif %}>
-        Associates Only ({{ associates_count }})
-      </option>
-      <option value="manual" {% if selected_source == 'manual' %}selected{% endif %}>
-        Manual / Custom ({{ manual_count }})
-      </option>
+            class="toolbar-select {% if selected_source in ['staff', 'associates'] %}source-filter-highlight{% endif %}">
+      <option value="all" {% if selected_source not in ['staff', 'associates', 'manual'] %}selected{% endif %}>All types ({{ employee_count }})</option>
+      <option value="staff" {% if selected_source == 'staff' %}selected{% endif %}>Staff ({{ staff_count }})</option>
+      <option value="associates" {% if selected_source == 'associates' %}selected{% endif %}>Associates ({{ associates_count }})</option>
+      <option value="manual" {% if selected_source == 'manual' %}selected{% endif %}>Manual ({{ manual_count }})</option>
     </select>
 
-    <select id="dept-filter" class="toolbar-select" onchange="handleFilter()">
-      <option value="">All Departments</option>
+    <label class="visually-hidden" for="dept-filter">Department</label>
+    <select id="dept-filter" class="toolbar-select">
+      <option value="">All departments</option>
       {% for d in departments %}
       <option value="{{ d }}">{{ d }}</option>
       {% endfor %}
     </select>
 
-    <select id="status-filter" class="toolbar-select" onchange="handleFilter()">
-      <option value="">All Statuses</option>
+    <label class="visually-hidden" for="status-filter">Status</label>
+    <select id="status-filter" class="toolbar-select">
+      <option value="">All statuses</option>
       <option value="active">Active</option>
       <option value="inactive">Inactive</option>
     </select>
   </div>
 
-  <div class="toolbar-right">
-    <span id="user-count-display" style="font-size:13px;font-weight:600;color:#64748B;">
-      Showing <strong id="displayed-count">{{ employee_records|length }}</strong> of {{ employee_count }} users
-    </span>
+  <div class="toolbar-right" aria-live="polite">
+    Showing <strong id="displayed-count">{{ employee_records|length }}</strong> of {{ employee_count }} users
   </div>
 </div>
 
-<!-- User Management Table -->
+<!-- Users -->
 <div class="user-table-wrap">
-  <table class="mantra-sync-table" id="users-table">
+  <table class="data-table" id="users-table">
+    <caption class="visually-hidden">Employee records</caption>
     <thead>
       <tr>
-        <th style="width:110px;">User ID</th>
-        <th style="min-width:180px;">Name</th>
-        <th style="width:90px;">Type</th>
-        <th style="min-width:130px;">Designation</th>
-        <th style="min-width:130px;">Department</th>
-        <th style="min-width:240px;">Email ID (Saved in Table)</th>
-        <th style="min-width:110px;">Contact No</th>
-        <th style="width:90px;">Status</th>
-        <th style="width:80px;">Role</th>
-        <th style="width:140px;text-align:center;">Actions</th>
+        <th scope="col">User ID</th>
+        <th scope="col">Name</th>
+        <th scope="col">Type</th>
+        <th scope="col">Designation</th>
+        <th scope="col">Department</th>
+        <th scope="col">Email ID</th>
+        <th scope="col">Contact no</th>
+        <th scope="col">Status</th>
+        <th scope="col">Role</th>
+        <th scope="col">Actions</th>
       </tr>
     </thead>
     <tbody id="users-tbody">
@@ -212,12 +141,8 @@
           data-email="{{ (emp.email_id or '')|lower }}"
           data-source="{{ (emp.source_type or 'manual')|lower }}"
           data-status="{{ (emp.employee_status or 'active')|lower }}">
-        <td>
-          <strong style="color:#0756b9;">{{ emp.employee_id }}</strong>
-        </td>
-        <td>
-          <span style="font-weight:600;color:#1e293b;">{{ emp.employee_name }}</span>
-        </td>
+        <td class="cell-id">{{ emp.employee_id }}</td>
+        <td class="cell-name">{{ emp.employee_name }}</td>
         <td>
           {% if emp.source_type == 'staff' %}
             <span class="source-badge source-badge-staff">Staff</span>
@@ -230,15 +155,15 @@
         <td>{{ emp.designation or '-' }}</td>
         <td>{{ emp.department or '-' }}</td>
         <td>
-          <div class="mantra-email-editor" data-employee-id="{{ emp.employee_id }}">
-            <input class="mantra-email-input"
+          <div class="email-edit" data-employee-id="{{ emp.employee_id }}">
+            <input class="email-edit-input"
                    type="email"
                    value="{{ emp.email_id or '' }}"
-                   placeholder="Enter email ID"
+                   placeholder="Add email ID"
                    aria-label="Email for {{ emp.employee_name }}">
-            <button class="mantra-email-save" type="button" title="Quick save email">Save</button>
+            <button class="email-edit-save" type="button">Save</button>
           </div>
-          <span class="mantra-email-status" aria-live="polite"></span>
+          <span class="email-edit-status" aria-live="polite"></span>
         </td>
         <td>{{ emp.contact_no or '-' }}</td>
         <td>
@@ -249,24 +174,17 @@
           {% endif %}
         </td>
         <td>
-          <span class="role-badge {% if emp.role == 'admin' %}role-badge-admin{% endif %}">
-            {{ emp.role or 'employee' }}
-          </span>
+          <span class="role-badge {% if emp.role == 'admin' %}role-badge-admin{% endif %}">{{ emp.role or 'employee' }}</span>
         </td>
-        <td style="text-align:center;">
-          <div class="table-actions" style="justify-content:center;">
+        <td>
+          <div class="table-actions">
             <button class="btn-action btn-action-edit"
                     type="button"
-                    onclick="openEditUserModal('{{ emp.employee_id }}')"
-                    title="Edit user details">
-              Edit
-            </button>
+                    data-edit-user="{{ emp.employee_id }}">Edit</button>
             <button class="btn-action btn-action-delete"
                     type="button"
-                    onclick="openDeleteUserModal('{{ emp.employee_id }}', '{{ emp.employee_name|replace("'", "\\'") }}')"
-                    title="Delete user">
-              Delete
-            </button>
+                    data-delete-user="{{ emp.employee_id }}"
+                    data-delete-name="{{ emp.employee_name }}">Delete</button>
           </div>
         </td>
       </tr>
@@ -275,13 +193,22 @@
   </table>
 </div>
 
-<!-- Table Pagination -->
+<!-- Shown when filters match nothing, so the page never goes silently blank -->
+<div class="empty-state" id="users-empty-state">
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+  </svg>
+  <h3>No users match these filters</h3>
+  <p>Try a different search term, or clear the filters to see every user.</p>
+  <button class="btn-secondary-action" type="button" id="btn-clear-filters">Clear filters</button>
+</div>
+
 <div class="pagination-bar">
   <div>
     Page <strong id="current-page-num">1</strong> of <strong id="total-page-num">1</strong>
     &nbsp;&middot;&nbsp;
-    Rows per page:
-    <select id="per-page-select" class="toolbar-select" style="height:30px;min-width:70px;padding:0 6px;margin-left:4px;" onchange="changePerPage()">
+    <label for="per-page-select">Rows per page</label>
+    <select id="per-page-select" class="toolbar-select per-page-select">
       <option value="20" selected>20</option>
       <option value="50">50</option>
       <option value="100">100</option>
@@ -289,50 +216,48 @@
     </select>
   </div>
   <div class="pagination-controls">
-    <button id="btn-page-first" class="btn-page" onclick="goToPage(1)" title="First Page">&laquo;</button>
-    <button id="btn-page-prev" class="btn-page" onclick="prevPage()" title="Previous Page">&lsaquo;</button>
+    <button id="btn-page-first" class="btn-page" type="button" aria-label="First page">&laquo;</button>
+    <button id="btn-page-prev" class="btn-page" type="button" aria-label="Previous page">&lsaquo;</button>
     <span id="page-numbers-container" style="display:inline-flex;gap:4px;"></span>
-    <button id="btn-page-next" class="btn-page" onclick="nextPage()" title="Next Page">&rsaquo;</button>
-    <button id="btn-page-last" class="btn-page" onclick="goToLastPage()" title="Last Page">&raquo;</button>
+    <button id="btn-page-next" class="btn-page" type="button" aria-label="Next page">&rsaquo;</button>
+    <button id="btn-page-last" class="btn-page" type="button" aria-label="Last page">&raquo;</button>
   </div>
 </div>
 
-<!-- =========================================================
-     ADD USER MODAL
-     ========================================================= -->
-<div id="add-user-modal" class="crud-modal" onclick="handleModalBackdropClick(event, 'add-user-modal')">
-  <div class="crud-modal-box">
+<!-- Add user -->
+<div id="add-user-modal" class="crud-modal">
+  <div class="crud-modal-box" role="dialog" aria-modal="true" aria-labelledby="add-user-title">
     <div class="crud-modal-header">
       <div>
-        <h2 class="crud-modal-title">+ Add New User</h2>
-        <p class="crud-modal-subtitle">Add a user to the employees table where email IDs and employee master are stored.</p>
+        <h2 class="crud-modal-title" id="add-user-title">Add user</h2>
+        <p class="crud-modal-subtitle">Creates a record in the employees table.</p>
       </div>
-      <button class="crud-modal-close" type="button" onclick="closeModal('add-user-modal')">&times;</button>
+      <button class="crud-modal-close" type="button" data-close-modal="add-user-modal" aria-label="Close">&times;</button>
     </div>
 
-    <form id="add-user-form" onsubmit="submitAddUser(event)">
+    <form id="add-user-form">
       <div class="crud-modal-body">
-        <div id="add-user-error" class="crud-error-msg"></div>
+        <div id="add-user-error" class="crud-error-msg" role="alert"></div>
 
         <div class="crud-form-grid">
           <div class="crud-form-group">
-            <label class="crud-form-label" for="add-emp-id">Employee ID <span class="required">*</span></label>
-            <input type="text" id="add-emp-id" name="employee_id" class="crud-form-input" required placeholder="e.g. 4070099 or EMP101">
+            <label class="crud-form-label" for="add-emp-id">Employee ID <span class="required" aria-hidden="true">*</span></label>
+            <input type="text" id="add-emp-id" name="employee_id" class="crud-form-input" required placeholder="e.g. 4070099">
           </div>
 
           <div class="crud-form-group">
-            <label class="crud-form-label" for="add-emp-name">Full Name <span class="required">*</span></label>
+            <label class="crud-form-label" for="add-emp-name">Full name <span class="required" aria-hidden="true">*</span></label>
             <input type="text" id="add-emp-name" name="employee_name" class="crud-form-input" required placeholder="e.g. Ramesh Kumar">
           </div>
 
           <div class="crud-form-group full-width">
-            <label class="crud-form-label" for="add-emp-email">Email ID (Stored in Table)</label>
+            <label class="crud-form-label" for="add-emp-email">Email ID</label>
             <input type="email" id="add-emp-email" name="email_id" class="crud-form-input" placeholder="e.g. ramesh.kumar@jsw.in">
           </div>
 
           <div class="crud-form-group">
             <label class="crud-form-label" for="add-emp-dept">Department</label>
-            <input type="text" id="add-emp-dept" name="department" class="crud-form-input" placeholder="e.g. OPERATIONS" list="dept-datalist">
+            <input type="text" id="add-emp-dept" name="department" class="crud-form-input" placeholder="e.g. Operations" list="dept-datalist">
             <datalist id="dept-datalist">
               {% for d in departments %}
               <option value="{{ d }}"></option>
@@ -342,12 +267,12 @@
 
           <div class="crud-form-group">
             <label class="crud-form-label" for="add-emp-desig">Designation</label>
-            <input type="text" id="add-emp-desig" name="designation" class="crud-form-input" placeholder="e.g. OFFICER">
+            <input type="text" id="add-emp-desig" name="designation" class="crud-form-input" placeholder="e.g. Officer">
           </div>
 
           <div class="crud-form-group">
-            <label class="crud-form-label" for="add-emp-contact">Contact No</label>
-            <input type="text" id="add-emp-contact" name="contact_no" class="crud-form-input" placeholder="e.g. 9876543210">
+            <label class="crud-form-label" for="add-emp-contact">Contact no</label>
+            <input type="tel" id="add-emp-contact" name="contact_no" class="crud-form-input" placeholder="e.g. 9876543210">
           </div>
 
           <div class="crud-form-group">
@@ -368,11 +293,11 @@
           </div>
 
           <div class="crud-form-group">
-            <label class="crud-form-label" for="add-emp-role">Access Role</label>
+            <label class="crud-form-label" for="add-emp-role">Access role</label>
             <select id="add-emp-role" name="role" class="crud-form-select">
               <option value="employee" selected>Employee</option>
-              <option value="dept_head">Department Head</option>
-              <option value="unit_head">Unit Head</option>
+              <option value="dept_head">Department head</option>
+              <option value="unit_head">Unit head</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -380,45 +305,41 @@
       </div>
 
       <div class="crud-modal-footer">
-        <button class="btn-secondary-action" type="button" onclick="closeModal('add-user-modal')">Cancel</button>
-        <button class="btn-primary-action" type="submit" id="btn-save-add-user">
-          Save User
-        </button>
+        <button class="btn-secondary-action" type="button" data-close-modal="add-user-modal">Cancel</button>
+        <button class="btn-primary-action" type="submit" id="btn-save-add-user">Add user</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- =========================================================
-     EDIT USER MODAL
-     ========================================================= -->
-<div id="edit-user-modal" class="crud-modal" onclick="handleModalBackdropClick(event, 'edit-user-modal')">
-  <div class="crud-modal-box">
+<!-- Edit user -->
+<div id="edit-user-modal" class="crud-modal">
+  <div class="crud-modal-box" role="dialog" aria-modal="true" aria-labelledby="edit-user-title">
     <div class="crud-modal-header">
       <div>
-        <h2 class="crud-modal-title">Edit User Details</h2>
-        <p class="crud-modal-subtitle">Update user information saved in the employees table.</p>
+        <h2 class="crud-modal-title" id="edit-user-title">Edit user</h2>
+        <p class="crud-modal-subtitle">Updates the record in the employees table.</p>
       </div>
-      <button class="crud-modal-close" type="button" onclick="closeModal('edit-user-modal')">&times;</button>
+      <button class="crud-modal-close" type="button" data-close-modal="edit-user-modal" aria-label="Close">&times;</button>
     </div>
 
-    <form id="edit-user-form" onsubmit="submitEditUser(event)">
+    <form id="edit-user-form">
       <div class="crud-modal-body">
-        <div id="edit-user-error" class="crud-error-msg"></div>
+        <div id="edit-user-error" class="crud-error-msg" role="alert"></div>
 
         <div class="crud-form-grid">
           <div class="crud-form-group">
-            <label class="crud-form-label" for="edit-emp-id">Employee ID (Primary Key)</label>
+            <label class="crud-form-label" for="edit-emp-id">Employee ID</label>
             <input type="text" id="edit-emp-id" name="employee_id" class="crud-form-input" disabled>
           </div>
 
           <div class="crud-form-group">
-            <label class="crud-form-label" for="edit-emp-name">Full Name <span class="required">*</span></label>
+            <label class="crud-form-label" for="edit-emp-name">Full name <span class="required" aria-hidden="true">*</span></label>
             <input type="text" id="edit-emp-name" name="employee_name" class="crud-form-input" required>
           </div>
 
           <div class="crud-form-group full-width">
-            <label class="crud-form-label" for="edit-emp-email">Email ID (Stored in Table)</label>
+            <label class="crud-form-label" for="edit-emp-email">Email ID</label>
             <input type="email" id="edit-emp-email" name="email_id" class="crud-form-input" placeholder="e.g. employee@jsw.in">
           </div>
 
@@ -433,8 +354,8 @@
           </div>
 
           <div class="crud-form-group">
-            <label class="crud-form-label" for="edit-emp-contact">Contact No</label>
-            <input type="text" id="edit-emp-contact" name="contact_no" class="crud-form-input">
+            <label class="crud-form-label" for="edit-emp-contact">Contact no</label>
+            <input type="tel" id="edit-emp-contact" name="contact_no" class="crud-form-input">
           </div>
 
           <div class="crud-form-group">
@@ -455,11 +376,11 @@
           </div>
 
           <div class="crud-form-group">
-            <label class="crud-form-label" for="edit-emp-role">Access Role</label>
+            <label class="crud-form-label" for="edit-emp-role">Access role</label>
             <select id="edit-emp-role" name="role" class="crud-form-select">
               <option value="employee">Employee</option>
-              <option value="dept_head">Department Head</option>
-              <option value="unit_head">Unit Head</option>
+              <option value="dept_head">Department head</option>
+              <option value="unit_head">Unit head</option>
               <option value="admin">Admin</option>
             </select>
           </div>
@@ -467,26 +388,22 @@
       </div>
 
       <div class="crud-modal-footer">
-        <button class="btn-secondary-action" type="button" onclick="closeModal('edit-user-modal')">Cancel</button>
-        <button class="btn-primary-action" type="submit" id="btn-save-edit-user">
-          Save Changes
-        </button>
+        <button class="btn-secondary-action" type="button" data-close-modal="edit-user-modal">Cancel</button>
+        <button class="btn-primary-action" type="submit" id="btn-save-edit-user">Save changes</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- =========================================================
-     DELETE CONFIRMATION MODAL
-     ========================================================= -->
-<div id="delete-user-modal" class="crud-modal" onclick="handleModalBackdropClick(event, 'delete-user-modal')">
-  <div class="crud-modal-box" style="width:min(480px,100%);">
-    <div class="crud-modal-header" style="border-bottom:none;padding-bottom:0;">
-      <button class="crud-modal-close" type="button" onclick="closeModal('delete-user-modal')">&times;</button>
+<!-- Delete user -->
+<div id="delete-user-modal" class="crud-modal">
+  <div class="crud-modal-box narrow" role="dialog" aria-modal="true" aria-labelledby="delete-user-title">
+    <div class="crud-modal-header bare">
+      <button class="crud-modal-close" type="button" data-close-modal="delete-user-modal" aria-label="Close">&times;</button>
     </div>
 
-    <div class="crud-modal-body" style="text-align:center;padding-top:0;">
-      <div class="delete-confirm-icon" style="margin:0 auto 16px;">
+    <div class="crud-modal-body centered">
+      <div class="delete-confirm-icon" aria-hidden="true">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6"></polyline>
           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -495,459 +412,438 @@
         </svg>
       </div>
 
-      <h2 style="margin:0 0 8px;font-size:20px;font-weight:800;color:#0F172A;">Delete User?</h2>
-      <p style="margin:0 0 16px;font-size:13.5px;color:#64748B;line-height:1.5;">
-        Are you sure you want to delete user <strong id="delete-user-name" style="color:#1E293B;"></strong>
-        (ID: <code id="delete-user-id" style="font-weight:700;color:#0756B9;"></code>) from the database?
+      <h2 class="delete-confirm-title" id="delete-user-title">Delete this user?</h2>
+      <p class="delete-confirm-copy">
+        <strong id="delete-user-name"></strong> (<code id="delete-user-id"></code>) will be removed from the employees table.
       </p>
-      <p style="margin:0;font-size:12px;color:#EF4444;background:#FEF2F2;padding:8px 12px;border-radius:6px;border:1px solid #FECACA;">
-        This removes the record from the employees table. This action cannot be undone.
-      </p>
+      <p class="delete-confirm-warning">This cannot be undone.</p>
 
-      <div id="delete-user-error" class="crud-error-msg" style="margin-top:14px;"></div>
+      <div id="delete-user-error" class="crud-error-msg" role="alert" style="margin-top:14px;"></div>
     </div>
 
-    <div class="crud-modal-footer" style="justify-content:center;gap:12px;">
-      <button class="btn-secondary-action" type="button" onclick="closeModal('delete-user-modal')">Cancel</button>
-      <button class="btn-action-delete"
-              style="padding:10px 22px;border-radius:10px;font-size:13.5px;font-weight:700;"
-              type="button"
-              id="btn-confirm-delete"
-              onclick="executeDeleteUser()">
-        Yes, Delete User
-      </button>
+    <div class="crud-modal-footer centered">
+      <button class="btn-secondary-action" type="button" data-close-modal="delete-user-modal">Keep user</button>
+      <button class="btn-action-delete btn-confirm-delete" type="button" id="btn-confirm-delete">Delete user</button>
     </div>
   </div>
 </div>
 
 {% endblock %}
-
 {% block scripts %}
 <script>
-/* =========================================================
-   PAGINATION & SEARCH LOGIC
-   ========================================================= */
-let allRows = [];
-let filteredRows = [];
-let currentPage = 1;
-let rowsPerPage = 20;
+(function () {
+  'use strict';
 
-document.addEventListener('DOMContentLoaded', function() {
-  allRows = Array.from(document.querySelectorAll('.user-row'));
-  // Run initial filter (respects selected source: staff, associates, or all)
-  filterRows();
-  initEmailEditors();
-});
+  var allRows = [];
+  var filteredRows = [];
+  var currentPage = 1;
+  var rowsPerPage = 20;
 
-function handleSearch() {
-  currentPage = 1;
-  filterRows();
-}
+  var searchInput = document.getElementById('user-search-input');
+  var sourceFilter = document.getElementById('source-filter');
+  var deptFilter = document.getElementById('dept-filter');
+  var statusFilter = document.getElementById('status-filter');
+  var perPageSelect = document.getElementById('per-page-select');
+  var emptyState = document.getElementById('users-empty-state');
+  var tableWrap = document.querySelector('.user-table-wrap');
 
-function handleFilter() {
-  currentPage = 1;
-  filterRows();
-}
+  /* ---------------------------------------------------------------------
+     Search, filter, paginate
+     --------------------------------------------------------------------- */
+  function filterRows() {
+    var query = (searchInput.value || '').trim().toLowerCase();
+    var source = (sourceFilter.value || 'all').trim().toLowerCase();
+    var dept = (deptFilter.value || '').trim().toLowerCase();
+    var status = (statusFilter.value || '').trim().toLowerCase();
 
-function filterRows() {
-  const query = (document.getElementById('user-search-input').value || '').trim().toLowerCase();
-  const sourceFilter = (document.getElementById('source-filter').value || 'all').trim().toLowerCase();
-  const deptFilter = (document.getElementById('dept-filter').value || '').trim().toLowerCase();
-  const statusFilter = (document.getElementById('status-filter').value || '').trim().toLowerCase();
+    filteredRows = allRows.filter(function (row) {
+      var d = row.dataset;
+      var haystack = [d.id, d.name, d.dept, d.desig, d.email].join(' ');
 
-  filteredRows = allRows.filter(function(row) {
-    const id = row.dataset.id || '';
-    const name = row.dataset.name || '';
-    const dept = row.dataset.dept || '';
-    const desig = row.dataset.desig || '';
-    const email = row.dataset.email || '';
-    const source = row.dataset.source || 'manual';
-    const status = row.dataset.status || '';
-
-    const matchesQuery = !query ||
-      id.includes(query) ||
-      name.includes(query) ||
-      dept.includes(query) ||
-      desig.includes(query) ||
-      email.includes(query);
-
-    const matchesSource = (sourceFilter === 'all' || sourceFilter === 'both' || !sourceFilter) || (source === sourceFilter);
-    const matchesDept = !deptFilter || dept === deptFilter;
-    const matchesStatus = !statusFilter || status === statusFilter;
-
-    return matchesQuery && matchesSource && matchesDept && matchesStatus;
-  });
-
-  const countDisplay = document.getElementById('displayed-count');
-  if (countDisplay) {
-    countDisplay.textContent = filteredRows.length;
-  }
-  updatePagination();
-}
-
-function updatePagination() {
-  const totalRows = filteredRows.length;
-  let totalPages = 1;
-
-  if (rowsPerPage === 'all') {
-    totalPages = 1;
-  } else {
-    totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
-  }
-
-  if (currentPage > totalPages) currentPage = totalPages;
-  if (currentPage < 1) currentPage = 1;
-
-  // Hide all rows first
-  allRows.forEach(row => row.style.display = 'none');
-
-  // Show only rows for the current page
-  if (rowsPerPage === 'all') {
-    filteredRows.forEach(row => row.style.display = '');
-  } else {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
-    for (let i = startIndex; i < endIndex; i++) {
-      filteredRows[i].style.display = '';
-    }
-  }
-
-  // Update page indicators
-  document.getElementById('current-page-num').textContent = currentPage;
-  document.getElementById('total-page-num').textContent = totalPages;
-
-  document.getElementById('btn-page-first').disabled = (currentPage === 1);
-  document.getElementById('btn-page-prev').disabled = (currentPage === 1);
-  document.getElementById('btn-page-next').disabled = (currentPage === totalPages);
-  document.getElementById('btn-page-last').disabled = (currentPage === totalPages);
-
-  renderPageNumbers(totalPages);
-}
-
-function renderPageNumbers(totalPages) {
-  const container = document.getElementById('page-numbers-container');
-  container.innerHTML = '';
-  if (totalPages <= 1) return;
-
-  const maxButtons = 5;
-  let start = Math.max(1, currentPage - 2);
-  let end = Math.min(totalPages, start + maxButtons - 1);
-  if (end - start < maxButtons - 1) {
-    start = Math.max(1, end - maxButtons + 1);
-  }
-
-  for (let p = start; p <= end; p++) {
-    const btn = document.createElement('button');
-    btn.className = 'btn-page' + (p === currentPage ? ' active' : '');
-    btn.textContent = p;
-    btn.onclick = (function(page) {
-      return function() { goToPage(page); };
-    })(p);
-    container.appendChild(btn);
-  }
-}
-
-function goToPage(page) {
-  currentPage = page;
-  updatePagination();
-  window.scrollTo({top: 0, behavior: 'smooth'});
-}
-
-function prevPage() {
-  if (currentPage > 1) {
-    goToPage(currentPage - 1);
-  }
-}
-
-function nextPage() {
-  const totalPages = rowsPerPage === 'all' ? 1 : Math.ceil(filteredRows.length / rowsPerPage);
-  if (currentPage < totalPages) {
-    goToPage(currentPage + 1);
-  }
-}
-
-function goToLastPage() {
-  const totalPages = rowsPerPage === 'all' ? 1 : Math.ceil(filteredRows.length / rowsPerPage);
-  goToPage(totalPages);
-}
-
-function changePerPage() {
-  const val = document.getElementById('per-page-select').value;
-  rowsPerPage = val === 'all' ? 'all' : parseInt(val, 10);
-  currentPage = 1;
-  updatePagination();
-}
-
-function toggleMantraSection() {
-  const panel = document.getElementById('mantra-sync-panel');
-  if (panel.style.display === 'none') {
-    panel.style.display = 'block';
-    panel.scrollIntoView({ behavior: 'smooth' });
-  } else {
-    panel.style.display = 'none';
-  }
-}
-
-/* =========================================================
-   MODAL CONTROLS
-   ========================================================= */
-function openModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-}
-
-function closeModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-}
-
-function handleModalBackdropClick(event, modalId) {
-  if (event.target === event.currentTarget) {
-    closeModal(modalId);
-  }
-}
-
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'Escape') {
-    ['add-user-modal', 'edit-user-modal', 'delete-user-modal'].forEach(closeModal);
-  }
-});
-
-/* =========================================================
-   ADD USER
-   ========================================================= */
-function openAddUserModal() {
-  document.getElementById('add-user-form').reset();
-  const err = document.getElementById('add-user-error');
-  err.style.display = 'none';
-  err.textContent = '';
-  openModal('add-user-modal');
-  setTimeout(() => document.getElementById('add-emp-id').focus(), 50);
-}
-
-async function submitAddUser(event) {
-  event.preventDefault();
-  const form = event.target;
-  const btn = document.getElementById('btn-save-add-user');
-  const err = document.getElementById('add-user-error');
-
-  err.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-
-  const formData = new FormData(form);
-  const payload = {};
-  formData.forEach((val, key) => payload[key] = val);
-
-  try {
-    const res = await fetch('/admin/users/add', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: JSON.stringify(payload)
+      return (!query || haystack.indexOf(query) !== -1) &&
+        (source === 'all' || (d.source || 'manual') === source) &&
+        (!dept || d.dept === dept) &&
+        (!status || d.status === status);
     });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.message || 'Failed to add user.');
-    }
 
-    // Success: reload
-    window.location.reload();
-  } catch (error) {
-    err.textContent = error.message || 'An error occurred while adding user.';
-    err.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save User';
+    document.getElementById('displayed-count').textContent = filteredRows.length;
+    updatePagination();
   }
-}
 
-/* =========================================================
-   EDIT USER
-   ========================================================= */
-let editingUserId = null;
+  var filterNow = function () { currentPage = 1; filterRows(); };
+  var filterDebounced = window.Portal.debounce(filterNow, 160);
 
-async function openEditUserModal(empId) {
-  editingUserId = empId;
-  const err = document.getElementById('edit-user-error');
-  err.style.display = 'none';
-  err.textContent = '';
-
-  document.getElementById('edit-emp-id').value = empId;
-  document.getElementById('edit-emp-name').value = 'Loading...';
-
-  openModal('edit-user-modal');
-
-  try {
-    const res = await fetch('/admin/users/' + encodeURIComponent(empId) + '/json');
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.message || 'Failed to load user.');
-    }
-
-    const u = result.user;
-    document.getElementById('edit-emp-id').value = u.employee_id || '';
-    document.getElementById('edit-emp-name').value = u.employee_name || '';
-    document.getElementById('edit-emp-email').value = u.email_id || '';
-    document.getElementById('edit-emp-dept').value = u.department || '';
-    document.getElementById('edit-emp-desig').value = u.designation || '';
-    document.getElementById('edit-emp-contact').value = u.contact_no || '';
-    document.getElementById('edit-emp-gender').value = u.gender || 'Male';
-    document.getElementById('edit-emp-status').value = u.employee_status || 'Active';
-    document.getElementById('edit-emp-role').value = u.role || 'employee';
-  } catch (error) {
-    err.textContent = error.message || 'Could not load user data.';
-    err.style.display = 'block';
+  function totalPages() {
+    if (rowsPerPage === 'all') return 1;
+    return Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
   }
-}
 
-async function submitEditUser(event) {
-  event.preventDefault();
-  if (!editingUserId) return;
+  function updatePagination() {
+    var pages = totalPages();
+    currentPage = Math.min(Math.max(currentPage, 1), pages);
 
-  const btn = document.getElementById('btn-save-edit-user');
-  const err = document.getElementById('edit-user-error');
-  err.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
+    allRows.forEach(function (row) { row.hidden = true; });
 
-  const payload = {
-    employee_name: document.getElementById('edit-emp-name').value,
-    email_id: document.getElementById('edit-emp-email').value,
-    department: document.getElementById('edit-emp-dept').value,
-    designation: document.getElementById('edit-emp-desig').value,
-    contact_no: document.getElementById('edit-emp-contact').value,
-    gender: document.getElementById('edit-emp-gender').value,
-    employee_status: document.getElementById('edit-emp-status').value,
-    role: document.getElementById('edit-emp-role').value,
+    var visible = rowsPerPage === 'all'
+      ? filteredRows
+      : filteredRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+    visible.forEach(function (row) { row.hidden = false; });
+
+    var noResults = filteredRows.length === 0;
+    emptyState.classList.toggle('show', noResults);
+    tableWrap.hidden = noResults;
+
+    document.getElementById('current-page-num').textContent = currentPage;
+    document.getElementById('total-page-num').textContent = pages;
+    document.getElementById('btn-page-first').disabled = currentPage === 1;
+    document.getElementById('btn-page-prev').disabled = currentPage === 1;
+    document.getElementById('btn-page-next').disabled = currentPage === pages;
+    document.getElementById('btn-page-last').disabled = currentPage === pages;
+
+    renderPageNumbers(pages);
+  }
+
+  function renderPageNumbers(pages) {
+    var container = document.getElementById('page-numbers-container');
+    container.innerHTML = '';
+    if (pages <= 1) return;
+
+    var maxButtons = 5;
+    var start = Math.max(1, currentPage - 2);
+    var end = Math.min(pages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+
+    for (var p = start; p <= end; p++) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-page' + (p === currentPage ? ' active' : '');
+      btn.textContent = p;
+      if (p === currentPage) btn.setAttribute('aria-current', 'page');
+      btn.dataset.page = p;
+      container.appendChild(btn);
+    }
+  }
+
+  function goToPage(page) {
+    currentPage = page;
+    updatePagination();
+    tableWrap.scrollTop = 0;
+  }
+
+  /* ---------------------------------------------------------------------
+     Mantra sync panel
+     --------------------------------------------------------------------- */
+  function initSyncPanel() {
+    var panel = document.getElementById('sync-panel');
+    var toggle = document.getElementById('btn-toggle-sync');
+    var form = document.getElementById('sync-form');
+    var runBtn = document.getElementById('btn-run-sync');
+
+    toggle.addEventListener('click', function () {
+      panel.hidden = !panel.hidden;
+      toggle.setAttribute('aria-expanded', String(!panel.hidden));
+      if (!panel.hidden) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    // A sync round-trips to MS SQL and can take a while; say so instead of
+    // leaving the page looking frozen.
+    form.addEventListener('submit', function () {
+      runBtn.disabled = true;
+      runBtn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span>Syncing, this can take a minute';
+    });
+  }
+
+  /* ---------------------------------------------------------------------
+     Add user
+     --------------------------------------------------------------------- */
+  function showError(id, message) {
+    var box = document.getElementById(id);
+    box.textContent = message;
+    box.style.display = 'block';
+  }
+
+  function hideError(id) {
+    var box = document.getElementById(id);
+    box.textContent = '';
+    box.style.display = 'none';
+  }
+
+  function openAddUserModal() {
+    document.getElementById('add-user-form').reset();
+    hideError('add-user-error');
+    window.Portal.openModal('add-user-modal', '#add-emp-id');
+  }
+
+  async function submitAddUser(event) {
+    event.preventDefault();
+    var btn = document.getElementById('btn-save-add-user');
+    hideError('add-user-error');
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+
+    var payload = {};
+    new FormData(event.target).forEach(function (value, key) { payload[key] = value; });
+
+    try {
+      var result = await postJson('/admin/users/add', payload);
+      window.sessionStorage.setItem('portal-toast', 'User ' + (result.user ? result.user.employee_id : '') + ' added.');
+      window.location.reload();
+    } catch (error) {
+      showError('add-user-error', error.message);
+      btn.disabled = false;
+      btn.textContent = 'Add user';
+    }
+  }
+
+  /* ---------------------------------------------------------------------
+     Edit user
+     --------------------------------------------------------------------- */
+  var editingUserId = null;
+
+  var EDIT_FIELDS = {
+    'edit-emp-id': 'employee_id',
+    'edit-emp-name': 'employee_name',
+    'edit-emp-email': 'email_id',
+    'edit-emp-dept': 'department',
+    'edit-emp-desig': 'designation',
+    'edit-emp-contact': 'contact_no',
+    'edit-emp-gender': 'gender',
+    'edit-emp-status': 'employee_status',
+    'edit-emp-role': 'role'
   };
 
-  try {
-    const res = await fetch('/admin/users/' + encodeURIComponent(editingUserId) + '/edit', {
+  async function openEditUserModal(empId) {
+    editingUserId = empId;
+    hideError('edit-user-error');
+    document.getElementById('edit-emp-id').value = empId;
+    window.Portal.openModal('edit-user-modal', '#edit-emp-name');
+
+    try {
+      var res = await fetch('/admin/users/' + encodeURIComponent(empId) + '/json');
+      var result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.message || 'Could not load this user.');
+
+      Object.keys(EDIT_FIELDS).forEach(function (id) {
+        document.getElementById(id).value = result.user[EDIT_FIELDS[id]] || '';
+      });
+    } catch (error) {
+      showError('edit-user-error', error.message);
+    }
+  }
+
+  async function submitEditUser(event) {
+    event.preventDefault();
+    if (!editingUserId) return;
+
+    var btn = document.getElementById('btn-save-edit-user');
+    hideError('edit-user-error');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    var payload = {};
+    Object.keys(EDIT_FIELDS).forEach(function (id) {
+      if (id === 'edit-emp-id') return;
+      payload[EDIT_FIELDS[id]] = document.getElementById(id).value;
+    });
+
+    try {
+      await postJson('/admin/users/' + encodeURIComponent(editingUserId) + '/edit', payload);
+      window.sessionStorage.setItem('portal-toast', 'Changes saved.');
+      window.location.reload();
+    } catch (error) {
+      showError('edit-user-error', error.message);
+      btn.disabled = false;
+      btn.textContent = 'Save changes';
+    }
+  }
+
+  /* ---------------------------------------------------------------------
+     Delete user
+     --------------------------------------------------------------------- */
+  var deletingUserId = null;
+
+  function openDeleteUserModal(empId, empName) {
+    deletingUserId = empId;
+    document.getElementById('delete-user-id').textContent = empId;
+    document.getElementById('delete-user-name').textContent = empName;
+    hideError('delete-user-error');
+    window.Portal.openModal('delete-user-modal', '#btn-confirm-delete');
+  }
+
+  async function executeDeleteUser() {
+    if (!deletingUserId) return;
+
+    var btn = document.getElementById('btn-confirm-delete');
+    hideError('delete-user-error');
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+
+    try {
+      await postJson('/admin/users/' + encodeURIComponent(deletingUserId) + '/delete', null);
+
+      var row = document.getElementById('row-' + deletingUserId);
+      if (row) {
+        allRows = allRows.filter(function (r) { return r !== row; });
+        row.remove();
+        filterRows();
+      }
+      window.Portal.closeModal('delete-user-modal');
+      window.Portal.toast('User ' + deletingUserId + ' deleted.', 'success');
+      deletingUserId = null;
+    } catch (error) {
+      showError('delete-user-error', error.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Delete user';
+    }
+  }
+
+  /* ---------------------------------------------------------------------
+     Inline email editing
+     --------------------------------------------------------------------- */
+  function initEmailEditors() {
+    document.querySelectorAll('.email-edit').forEach(function (editor) {
+      var input = editor.querySelector('.email-edit-input');
+      var button = editor.querySelector('.email-edit-save');
+      var status = editor.parentElement.querySelector('.email-edit-status');
+      var saved = input.value;
+
+      function syncButton() {
+        button.disabled = input.value === saved;
+      }
+
+      syncButton();
+      input.addEventListener('input', function () {
+        status.textContent = '';
+        syncButton();
+      });
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); button.click(); }
+      });
+
+      button.addEventListener('click', async function () {
+        button.disabled = true;
+        button.classList.add('saving');
+        status.className = 'email-edit-status';
+        status.textContent = 'Saving...';
+
+        try {
+          var result = await postJson(
+            '/admin/employees/' + encodeURIComponent(editor.dataset.employeeId) + '/email',
+            { email_id: input.value }
+          );
+          input.value = result.email_id;
+          saved = result.email_id;
+          status.className = 'email-edit-status saved';
+          status.textContent = 'Saved';
+
+          var row = editor.closest('.user-row');
+          if (row) row.dataset.email = (result.email_id || '').toLowerCase();
+        } catch (error) {
+          status.className = 'email-edit-status error';
+          status.textContent = error.message;
+        } finally {
+          button.classList.remove('saving');
+          syncButton();
+        }
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------------------
+     Shared fetch wrapper
+     --------------------------------------------------------------------- */
+  async function postJson(url, payload) {
+    var res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest'
       },
-      body: JSON.stringify(payload)
+      body: payload === null ? undefined : JSON.stringify(payload)
     });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.message || 'Failed to update user.');
-    }
 
-    // Success: reload to show updated data
-    window.location.reload();
-  } catch (error) {
-    err.textContent = error.message || 'An error occurred while updating user.';
-    err.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save Changes';
+    var result = await res.json().catch(function () { return {}; });
+    if (!res.ok || !result.success) {
+      throw new Error(result.message || 'Something went wrong. Try again.');
+    }
+    return result;
   }
-}
 
-/* =========================================================
-   DELETE USER
-   ========================================================= */
-let deletingUserId = null;
+  /* ---------------------------------------------------------------------
+     Wiring
+     --------------------------------------------------------------------- */
+  document.addEventListener('DOMContentLoaded', function () {
+    allRows = Array.prototype.slice.call(document.querySelectorAll('.user-row'));
 
-function openDeleteUserModal(empId, empName) {
-  deletingUserId = empId;
-  document.getElementById('delete-user-id').textContent = empId;
-  document.getElementById('delete-user-name').textContent = empName;
-  const err = document.getElementById('delete-user-error');
-  err.style.display = 'none';
-  err.textContent = '';
-  openModal('delete-user-modal');
-}
-
-async function executeDeleteUser() {
-  if (!deletingUserId) return;
-
-  const btn = document.getElementById('btn-confirm-delete');
-  const err = document.getElementById('delete-user-error');
-  err.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'Deleting...';
-
-  try {
-    const res = await fetch('/admin/users/' + encodeURIComponent(deletingUserId) + '/delete', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      }
+    searchInput.addEventListener('input', filterDebounced);
+    [sourceFilter, deptFilter, statusFilter].forEach(function (el) {
+      el.addEventListener('change', filterNow);
     });
-    const result = await res.json();
-    if (!res.ok || !result.success) {
-      throw new Error(result.message || 'Failed to delete user.');
-    }
 
-    // Remove row from table directly
-    const row = document.getElementById('row-' + deletingUserId);
-    if (row) {
-      allRows = allRows.filter(r => r !== row);
-      filteredRows = filteredRows.filter(r => r !== row);
-      row.remove();
+    perPageSelect.addEventListener('change', function () {
+      rowsPerPage = perPageSelect.value === 'all' ? 'all' : parseInt(perPageSelect.value, 10);
+      currentPage = 1;
       updatePagination();
-      const countDisplay = document.getElementById('displayed-count');
-      if (countDisplay) {
-        countDisplay.textContent = filteredRows.length;
-      }
-    }
-    closeModal('delete-user-modal');
-  } catch (error) {
-    err.textContent = error.message || 'An error occurred while deleting user.';
-    err.style.display = 'block';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Yes, Delete User';
-  }
-}
+    });
 
-/* =========================================================
-   QUICK EMAIL SAVE INLINE
-   ========================================================= */
-function initEmailEditors() {
-  document.querySelectorAll('.mantra-email-editor').forEach(function(editor) {
-    const input = editor.querySelector('.mantra-email-input');
-    const button = editor.querySelector('.mantra-email-save');
-    const status = editor.parentElement.querySelector('.mantra-email-status');
+    document.getElementById('btn-page-first').addEventListener('click', function () { goToPage(1); });
+    document.getElementById('btn-page-prev').addEventListener('click', function () { goToPage(currentPage - 1); });
+    document.getElementById('btn-page-next').addEventListener('click', function () { goToPage(currentPage + 1); });
+    document.getElementById('btn-page-last').addEventListener('click', function () { goToPage(totalPages()); });
+    document.getElementById('page-numbers-container').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-page]');
+      if (btn) goToPage(parseInt(btn.dataset.page, 10));
+    });
 
-    button.addEventListener('click', async function() {
-      button.disabled = true;
-      status.className = 'mantra-email-status';
-      status.textContent = 'Saving...';
-      try {
-        const response = await fetch('/admin/employees/' + encodeURIComponent(editor.dataset.employeeId) + '/email', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({email_id: input.value})
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(result.message || 'Save failed.');
-        input.value = result.email_id;
-        status.textContent = 'Saved';
-        // update dataset for live search
-        const row = editor.closest('.user-row');
-        if (row) row.dataset.email = (result.email_id || '').toLowerCase();
-      } catch (error) {
-        status.className = 'mantra-email-status error';
-        status.textContent = error.message || 'Could not save email.';
-      } finally {
-        button.disabled = false;
+    document.getElementById('btn-clear-filters').addEventListener('click', function () {
+      searchInput.value = '';
+      sourceFilter.value = 'all';
+      deptFilter.value = '';
+      statusFilter.value = '';
+      sourceFilter.classList.remove('source-filter-highlight');
+      filterNow();
+      searchInput.focus();
+    });
+
+    document.getElementById('btn-add-user').addEventListener('click', openAddUserModal);
+    document.getElementById('add-user-form').addEventListener('submit', submitAddUser);
+    document.getElementById('edit-user-form').addEventListener('submit', submitEditUser);
+    document.getElementById('btn-confirm-delete').addEventListener('click', executeDeleteUser);
+
+    document.addEventListener('click', function (e) {
+      var close = e.target.closest('[data-close-modal]');
+      if (close) return window.Portal.closeModal(close.dataset.closeModal);
+
+      var edit = e.target.closest('[data-edit-user]');
+      if (edit) return openEditUserModal(edit.dataset.editUser);
+
+      var del = e.target.closest('[data-delete-user]');
+      if (del) return openDeleteUserModal(del.dataset.deleteUser, del.dataset.deleteName);
+
+      // Clicking the dimmed backdrop closes the dialog.
+      if (e.target.classList.contains('crud-modal')) {
+        window.Portal.closeModal(e.target.id);
       }
     });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      ['add-user-modal', 'edit-user-modal', 'delete-user-modal'].forEach(window.Portal.closeModal);
+    });
+
+    initSyncPanel();
+    initEmailEditors();
+    filterRows();
+
+    // Success message carried across the reload that follows add/edit.
+    var pending = window.sessionStorage.getItem('portal-toast');
+    if (pending) {
+      window.sessionStorage.removeItem('portal-toast');
+      window.Portal.toast(pending, 'success');
+    }
   });
-}
+})();
 </script>
 {% endblock %}

@@ -6,11 +6,10 @@
 
 <div class="dashboard-hero">
   <div class="dashboard-hero-inner">
-    <p class="dashboard-kicker">JSW DHARAMTAR PORT • EMPLOYEE SERVICES</p>
+    <p class="dashboard-kicker">JSW Dharamtar Port &middot; Employee Services</p>
     <h1>Welcome to your User Management Portal</h1>
     <p>
-      Access employee records, user management, and administrative services
-      from one simple workspace.
+      Employee records, user accounts and administrative services, in one workspace.
     </p>
   </div>
 </div>
@@ -20,39 +19,23 @@
   <span>Select a department to continue</span>
 </div>
 
-<div class="tile-grid">
-
-  <!-- <a class="tile" href="{{ url_for('department_placeholder', name='hr') }}">
-    <div class="tile-icon">HR</div>
-    <p class="tile-name">Human Resources</p>
-    <p class="tile-meta">Leave, reimbursement & employee services</p>
-  </a> -->
-
-  {% if session.get('is_admin') %}
+{% if session.get('is_admin') %}
+  <div class="tile-grid">
     <a class="tile" href="{{ url_for('admin_module') }}">
-      <div class="tile-icon">UM</div>
+      <div class="tile-icon" aria-hidden="true">UM</div>
       <p class="tile-name">User Management</p>
-      <p class="tile-meta">Manage users, employee master &amp; Mantra sync</p>
+      <p class="tile-meta">Users, employee master and Mantra sync</p>
     </a>
     <a class="tile" href="{{ url_for('approval_management') }}">
-      <div class="tile-icon" style="background:linear-gradient(135deg,#0756b9,#102d63);color:#fff;">AM</div>
+      <div class="tile-icon tile-icon-alt" aria-hidden="true">AM</div>
       <p class="tile-name">Approval Management</p>
-      <p class="tile-meta">Visual workflow designer, hierarchy &amp; approvers</p>
+      <p class="tile-meta">Workflow designer, hierarchy and approvers</p>
     </a>
-  {% endif %}
-
-  <!-- <a class="tile" href="{{ url_for('department_placeholder', name='it') }}">
-    <div class="tile-icon">IT</div>
-    <p class="tile-name">Information Technology</p>
-    <p class="tile-meta">Support tickets & technology assistance</p>
-  </a> -->
-
-  <!-- <a class="tile" href="{{ url_for('department_placeholder', name='finance') }}">
-    <div class="tile-icon">₹</div>
-    <p class="tile-name">Finance</p>
-    <p class="tile-meta">Reimbursements & finance services</p>
-  </a> -->
-
-</div>
+  </div>
+{% else %}
+  <div class="card">
+    <p class="empty">No departments are open to you yet. Contact an administrator to get access.</p>
+  </div>
+{% endif %}
 
 {% endblock %}

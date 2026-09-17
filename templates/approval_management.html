@@ -2,6 +2,11 @@
 {% block title %}Approval Management • Workflow Designer{% endblock %}
 {% set active = 'approvals_mgmt' %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='approval-management.css') }}">
+{% endblock %}
+
+
 {% block content %}
 <div class="wf-container">
 
@@ -241,1480 +246,6 @@
   </div>
 </div>
 
-<!-- =========================================================================
-     STYLES
-     ========================================================================= -->
-<style>
-  /* =========================================================================
-     PAGE & BASE OVERRIDES FOR RESPONSIVE CANVAS DESIGNER
-     ========================================================================= */
-  /* Allow workflow builder to utilize available screen width and prevent window horizontal scroll */
-  .content {
-    max-width: 100% !important;
-    width: 100% !important;
-    padding: 20px 24px 44px !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-  }
-
-  body, #app-shell, .main {
-    overflow-x: hidden;
-  }
-
-  /* Base Container */
-  .wf-container {
-    width: 100%;
-    max-width: 1720px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    box-sizing: border-box;
-    min-width: 0;
-  }
-
-  /* =========================================================================
-     TOP TOOLBAR: RESPONSIVE CONTROLS
-     ========================================================================= */
-  .wf-toolbar {
-    background: #ffffff;
-    border: 1px solid #dce5f0;
-    border-radius: 16px;
-    padding: 18px 24px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .wf-toolbar-left {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    flex: 1 1 480px;
-    min-width: 0;
-  }
-
-  .wf-title-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .wf-badge {
-    align-self: flex-start;
-    display: inline-block;
-    padding: 3px 9px;
-    font-size: 10.5px;
-    font-weight: 800;
-    color: #0756b9;
-    background: #edf5fe;
-    border-radius: 6px;
-    letter-spacing: 0.8px;
-    line-height: 1.3;
-  }
-
-  .wf-title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 800;
-    color: #112753;
-    letter-spacing: -0.4px;
-    line-height: 1.25;
-    word-break: break-word;
-  }
-
-  .wf-subtitle {
-    margin: 0;
-    font-size: 13px;
-    color: #627591;
-    line-height: 1.4;
-    word-break: break-word;
-  }
-
-  .wf-selector-wrap {
-    display: flex;
-    align-items: center;
-    gap: 8px 10px;
-    flex-wrap: wrap;
-    margin-top: 2px;
-    min-width: 0;
-  }
-
-  .wf-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: #3b4d6b;
-    white-space: nowrap;
-  }
-
-  .wf-select-box {
-    position: relative;
-    flex: 1 1 200px;
-    min-width: 150px;
-    max-width: 360px;
-  }
-
-  .wf-select {
-    width: 100%;
-    height: 38px;
-    padding: 0 32px 0 12px;
-    border: 1px solid #c9d7e7;
-    border-radius: 8px;
-    font-size: 13.5px;
-    font-weight: 600;
-    color: #122956;
-    background: #ffffff;
-    cursor: pointer;
-    outline: none;
-    transition: all .15s;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-    box-sizing: border-box;
-  }
-  .wf-select:focus {
-    border-color: #0756b9;
-    box-shadow: 0 0 0 3px rgba(7, 86, 185, 0.12);
-  }
-
-  .wf-toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 8px 10px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-
-  /* Buttons */
-  .wf-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    height: 38px;
-    padding: 0 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all .15s ease;
-    border: 1px solid transparent;
-    text-decoration: none;
-    white-space: nowrap;
-    box-sizing: border-box;
-  }
-  .wf-btn:active {
-    transform: scale(0.98);
-  }
-
-  .wf-btn-primary {
-    background: linear-gradient(135deg, #0756b9 0%, #0b6bd5 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(7, 86, 185, 0.22);
-  }
-  .wf-btn-primary:hover {
-    background: linear-gradient(135deg, #064ca4 0%, #095ec0 100%);
-    box-shadow: 0 6px 16px rgba(7, 86, 185, 0.28);
-  }
-
-  .wf-btn-secondary {
-    background: #112753;
-    color: #ffffff;
-  }
-  .wf-btn-secondary:hover {
-    background: #1a3977;
-  }
-
-  .wf-btn-outline {
-    background: #ffffff;
-    border-color: #cbd8e8;
-    color: #2b4065;
-  }
-  .wf-btn-outline:hover {
-    background: #f4f8fd;
-    border-color: #0756b9;
-    color: #0756b9;
-  }
-
-  .wf-btn-danger-outline {
-    background: #ffffff;
-    border-color: #ffd2d4;
-    color: #dc2626;
-  }
-  .wf-btn-danger-outline:hover {
-    background: #fef2f2;
-    border-color: #dc2626;
-  }
-
-  .wf-btn-danger {
-    background: #dc2626;
-    color: #ffffff;
-  }
-  .wf-btn-danger:hover {
-    background: #b91c1c;
-  }
-
-  .wf-save-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 6px 12px;
-    border-radius: 20px;
-    background: #eef7ee;
-    color: #1e7e34;
-    border: 1px solid #d1edd5;
-    white-space: nowrap;
-    box-sizing: border-box;
-  }
-  .wf-save-status.unsaved {
-    background: #fff8e8;
-    color: #b7791f;
-    border-color: #fef0cd;
-  }
-  .wf-save-status.saving {
-    background: #e8f3fe;
-    color: #0756b9;
-    border-color: #d1e5fa;
-  }
-  .wf-save-status .status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: currentColor;
-    flex-shrink: 0;
-  }
-
-  /* =========================================================================
-     WORKSPACE GRID: RESPONSIVE FOR BIG, MEDIUM, AND SMALL SCREENS
-     ========================================================================= */
-  .wf-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    gap: 20px;
-    align-items: start;
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  /* Big screens (≥ 1440px) */
-  @media (min-width: 1440px) {
-    .wf-workspace {
-      grid-template-columns: minmax(0, 1fr) 380px;
-      gap: 24px;
-    }
-  }
-
-  /* Medium screens (992px to 1279px) */
-  @media (max-width: 1279px) and (min-width: 992px) {
-    .wf-workspace {
-      grid-template-columns: minmax(0, 1fr) 320px;
-      gap: 16px;
-    }
-    .wf-toolbar {
-      padding: 16px 20px;
-    }
-  }
-
-  /* Tablets & Small screens (< 992px) */
-  @media (max-width: 991px) {
-    .wf-workspace {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 20px;
-    }
-    .wf-palette-sidebar {
-      position: static !important;
-      height: auto !important;
-      max-height: 520px;
-      order: 2;
-    }
-    .wf-toolbar-right {
-      width: 100%;
-      justify-content: flex-start;
-    }
-  }
-
-  /* Mobile devices (< 768px) */
-  @media (max-width: 767px) {
-    .content {
-      padding: 12px 10px 32px !important;
-    }
-    .wf-container {
-      gap: 14px;
-    }
-    .wf-toolbar {
-      padding: 14px 14px;
-      gap: 12px;
-      border-radius: 12px;
-    }
-    .wf-title {
-      font-size: 19px;
-    }
-    .wf-subtitle {
-      font-size: 12px;
-    }
-    .wf-selector-wrap {
-      width: 100%;
-    }
-    .wf-select-box {
-      flex: 1 1 100%;
-      max-width: 100%;
-    }
-    .wf-toolbar-right {
-      width: 100%;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .wf-toolbar-right .wf-btn {
-      flex: 1 1 calc(50% - 6px);
-      padding: 0 10px;
-      font-size: 12px;
-      height: 36px;
-    }
-    .wf-toolbar-right #btn-save-wf {
-      flex: 1 1 100%;
-    }
-    .wf-save-status {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  /* =========================================================================
-     CANVAS AREA & HEADER
-     ========================================================================= */
-  .wf-canvas-area {
-    background: #ffffff;
-    border: 1px solid #dce5f0;
-    border-radius: 18px;
-    padding: 24px 26px 40px;
-    min-height: 600px;
-    box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
-    position: relative;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-  }
-
-  @media (max-width: 767px) {
-    .wf-canvas-area {
-      padding: 16px 12px 28px;
-      border-radius: 14px;
-      min-height: 460px;
-    }
-  }
-
-  .canvas-header-bar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px 16px;
-    padding-bottom: 16px;
-    margin-bottom: 24px;
-    border-bottom: 1px dashed #e2ebf4;
-    min-width: 0;
-  }
-
-  .canvas-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
-    flex: 1 1 280px;
-    min-width: 0;
-  }
-
-  .canvas-meta .meta-label {
-    font-size: 12px;
-    font-weight: 800;
-    color: #0756b9;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-right: 4px;
-    white-space: nowrap;
-  }
-  .canvas-meta .meta-desc {
-    font-size: 12px;
-    color: #71829d;
-    line-height: 1.35;
-  }
-
-  .btn-text-sm {
-    background: none;
-    border: none;
-    color: #677b99;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: underline;
-    white-space: nowrap;
-  }
-  .btn-text-sm:hover {
-    color: #dc2626;
-  }
-
-  /* =========================================================================
-     HIERARCHICAL ORGANOGRAM TREE PIPELINE
-     ========================================================================= */
-  .wf-tree-pipeline {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0;
-    width: 100%;
-    max-width: 100%;
-    margin: 0 auto;
-    box-sizing: border-box;
-    min-width: 0;
-  }
-
-  /* Top Trunk: Stage 1 & Stage 2 */
-  .wf-organogram-trunk {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 620px;
-    box-sizing: border-box;
-    min-width: 0;
-  }
-
-  @media (max-width: 680px) {
-    .wf-organogram-trunk {
-      max-width: 100%;
-    }
-  }
-
-  /* Hierarchical Vertical Connectors */
-  .wf-connector {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 38px;
-    position: relative;
-    width: 24px;
-  }
-  .wf-connector-line {
-    width: 3px;
-    height: 100%;
-    background: linear-gradient(180deg, #1e40af 0%, #7c3aed 100%);
-    border-radius: 2px;
-  }
-  .wf-connector-arrow {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #ffffff;
-    border: 2px solid #7c3aed;
-    color: #7c3aed;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
-  }
-
-  /* Tree Branch Split Section */
-  .wf-tree-split-section {
-    width: 100%;
-    max-width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 0;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  .wf-trunk-connector {
-    width: 3px;
-    height: 34px;
-    background: linear-gradient(180deg, #7c3aed 0%, #10b981 100%);
-    position: relative;
-    flex-shrink: 0;
-  }
-  .wf-trunk-connector::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #10b981;
-  }
-
-  /* Branch Bar Visual Splitter */
-  .wf-branch-bar-container {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    position: relative;
-  }
-  .wf-branch-bar-line {
-    height: 3px;
-    background: #10b981;
-    border-radius: 2px;
-    transition: all .2s;
-  }
-
-  /* =========================================================================
-     HORIZONTAL BRANCHES CONTAINER: SAFE SCROLLING (PREVENTS NEGATIVE CLIPPING)
-     ========================================================================= */
-  .wf-branches-container {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-    justify-content: flex-start;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 8px 16px 36px;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  @supports (justify-content: safe center) {
-    .wf-branches-container {
-      justify-content: safe center;
-    }
-  }
-
-  /* Custom styled scrollbars for horizontal branches */
-  .wf-branches-container::-webkit-scrollbar {
-    height: 7px;
-  }
-  .wf-branches-container::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 8px;
-  }
-  .wf-branches-container::-webkit-scrollbar-thumb {
-    background: #c1d2e5;
-    border-radius: 8px;
-  }
-  .wf-branches-container::-webkit-scrollbar-thumb:hover {
-    background: #9ab3ce;
-  }
-
-  /* Department Column Branch */
-  .wf-dept-branch {
-    flex: 0 0 320px;
-    width: 320px;
-    max-width: calc(100vw - 64px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    box-sizing: border-box;
-  }
-
-  @media (max-width: 480px) {
-    .wf-dept-branch {
-      flex: 0 0 285px;
-      width: 285px;
-      max-width: calc(100vw - 44px);
-    }
-  }
-
-  /* Vertical stem from horizontal branch bar into HOD card */
-  .wf-branch-stem {
-    width: 3px;
-    height: 28px;
-    background: #10b981;
-    position: relative;
-    flex-shrink: 0;
-  }
-  .wf-branch-stem::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid #10b981;
-  }
-
-  .wf-sub-connector {
-    width: 2px;
-    height: 24px;
-    background: #cbd5e1;
-    position: relative;
-    margin: 2px 0;
-    flex-shrink: 0;
-  }
-  .wf-sub-connector::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 6px;
-    height: 6px;
-    background: #94a3b8;
-    border-radius: 50%;
-  }
-
-  /* =========================================================================
-     STAGE NODES (CARDS)
-     ========================================================================= */
-  .wf-stage-card {
-    width: 100%;
-    background: #ffffff;
-    border: 1px solid #dce5f0;
-    border-radius: 14px;
-    box-shadow: 0 4px 16px rgba(18, 41, 86, 0.05);
-    transition: all .2s cubic-bezier(.16,1,.3,1);
-    overflow: hidden;
-    position: relative;
-    box-sizing: border-box;
-    min-width: 0;
-  }
-  .wf-stage-card:hover {
-    border-color: #b7cee8;
-    box-shadow: 0 8px 24px rgba(18, 41, 86, 0.08);
-  }
-
-  /* Stage 1: Unit Head Card */
-  .wf-stage-card.is-stage-1,
-  .wf-stage-card.is-final-stage {
-    border: 2px solid #1e40af;
-    background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
-    box-shadow: 0 8px 26px rgba(30, 64, 175, 0.12);
-  }
-  .is-stage-1 .wf-stage-header,
-  .is-final-stage .wf-stage-header {
-    background: linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%);
-    border-bottom: 1px solid #bfdbfe;
-  }
-  .stage-badge-pill.stage-1-pill {
-    background: #1e40af;
-    color: #ffffff;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  /* Stage 2: HR Head Card */
-  .wf-stage-card.is-stage-2 {
-    border: 2px solid #7c3aed;
-    background: linear-gradient(180deg, #ffffff 0%, #faf5ff 100%);
-    box-shadow: 0 8px 26px rgba(124, 58, 237, 0.10);
-  }
-  .is-stage-2 .wf-stage-header {
-    background: linear-gradient(90deg, #ede9fe 0%, #faf5ff 100%);
-    border-bottom: 1px solid #ddd6fe;
-  }
-  .stage-badge-pill.stage-2-pill {
-    background: #7c3aed;
-    color: #ffffff;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  /* Stage 3: HOD Card */
-  .wf-stage-card.is-hod-card {
-    border: 2px solid #059669;
-    background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%);
-    box-shadow: 0 8px 24px rgba(5, 150, 105, 0.12);
-  }
-  .is-hod-card .wf-stage-header {
-    background: linear-gradient(90deg, #d1fae5 0%, #ecfdf5 100%);
-    border-bottom: 1px solid #a7f3d0;
-  }
-  .stage-badge-pill.stage-hod-pill {
-    background: #059669;
-    color: #ffffff;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  /* Subordinate Cards */
-  .wf-stage-card.is-sub-card {
-    border: 1px solid #cbd5e1;
-    background: #ffffff;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04);
-  }
-  .is-sub-card .wf-stage-header {
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  .stage-badge-pill.stage-sub-pill {
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .stage-dept-pill {
-    font-size: 11px;
-    font-weight: 700;
-    color: #065f46;
-    background: #d1fae5;
-    padding: 3px 8px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: 1px solid #a7f3d0;
-    white-space: nowrap;
-  }
-
-  .stage-sync-btn {
-    background: #ffffff;
-    border: 1px solid #a7f3d0;
-    color: #059669;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all .15s;
-    white-space: nowrap;
-  }
-  .stage-sync-btn:hover {
-    background: #059669;
-    color: #ffffff;
-  }
-
-  /* "+ Add Department HOD" Card (Right Side) */
-  .add-hod-column-card {
-    flex: 0 0 290px;
-    width: 290px;
-    max-width: calc(100vw - 64px);
-    min-height: 200px;
-    border: 2px dashed #10b981;
-    border-radius: 14px;
-    background: #f0fdf4;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 22px 18px;
-    text-align: center;
-    cursor: pointer;
-    transition: all .2s cubic-bezier(.16,1,.3,1);
-    margin-top: 28px;
-    box-sizing: border-box;
-  }
-  .add-hod-column-card:hover {
-    background: #dcfce7;
-    border-color: #059669;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
-  }
-  .add-hod-column-card.drag-over {
-    background: #bbf7d0;
-    border-color: #047857;
-    border-style: solid;
-    transform: scale(1.02);
-  }
-  .add-hod-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: #ffffff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
-  }
-  .add-hod-title {
-    font-size: 14.5px;
-    font-weight: 800;
-    color: #065f46;
-    margin-bottom: 5px;
-  }
-  .add-hod-desc {
-    font-size: 11.5px;
-    color: #047857;
-    line-height: 1.35;
-  }
-
-  /* Stage Header Details */
-  .wf-stage-header {
-    padding: 12px 16px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px 10px;
-    border-bottom: 1px solid #edf3f8;
-    background: #fafcff;
-    box-sizing: border-box;
-    min-width: 0;
-  }
-  .is-final-stage .wf-stage-header {
-    background: linear-gradient(90deg, #edf5ff 0%, #f4f8ff 100%);
-    border-bottom: 1px solid #dce8f8;
-  }
-
-  .stage-header-left {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    flex: 1 1 200px;
-    min-width: 0;
-  }
-
-  .stage-badge-pill {
-    font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 3px 8px;
-    border-radius: 6px;
-    background: #eaf1fa;
-    color: #0756b9;
-    line-height: 1.3;
-    flex-shrink: 0;
-  }
-
-  .stage-title-input {
-    border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 4px 6px;
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #12284e;
-    background: transparent;
-    outline: none;
-    transition: all .15s;
-    flex: 1 1 130px;
-    min-width: 110px;
-    max-width: 100%;
-    text-overflow: ellipsis;
-    box-sizing: border-box;
-  }
-  .stage-title-input:hover {
-    border-color: #cbd8e8;
-    background: #ffffff;
-  }
-  .stage-title-input:focus {
-    border-color: #0756b9;
-    background: #ffffff;
-    box-shadow: 0 0 0 2px rgba(7, 86, 185, 0.12);
-  }
-
-  .stage-header-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-    margin-left: auto;
-  }
-
-  .stage-rule-tag {
-    font-size: 10.5px;
-    font-weight: 700;
-    color: #5c6f8a;
-    background: #eef3f9;
-    padding: 3px 7px;
-    border-radius: 10px;
-    white-space: nowrap;
-  }
-
-  .stage-delete-btn {
-    background: none;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 6px;
-    display: grid;
-    place-items: center;
-    transition: all .15s;
-  }
-  .stage-delete-btn:hover {
-    color: #dc2626;
-    background: #fee2e2;
-  }
-
-  /* Drop Zone */
-  .wf-drop-zone {
-    min-height: 90px;
-    padding: 12px 14px;
-    background: #ffffff;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    transition: all .2s ease;
-    position: relative;
-    box-sizing: border-box;
-  }
-  .wf-drop-zone.drag-over {
-    background: #f0f7ff;
-    outline: 2px dashed #0756b9;
-    outline-offset: -3px;
-  }
-
-  .drop-placeholder {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 16px 12px;
-    border: 2px dashed #d5e0ee;
-    border-radius: 10px;
-    color: #7b8ea7;
-    font-size: 12px;
-    font-weight: 600;
-    gap: 4px;
-    background: #fafcff;
-    cursor: pointer;
-    transition: all .15s ease;
-    text-align: center;
-    box-sizing: border-box;
-  }
-  .drop-placeholder:hover {
-    border-color: #0756b9;
-    color: #0756b9;
-    background: #f4f8fe;
-  }
-  .drag-over .drop-placeholder {
-    border-color: #0756b9;
-    background: #eaf3fe;
-    color: #0756b9;
-  }
-
-  /* Dropped Approver Chips */
-  .approver-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 10px 5px 6px;
-    background: #ffffff;
-    border: 1px solid #d3e1f0;
-    border-radius: 24px;
-    box-shadow: 0 2px 6px rgba(17, 43, 86, 0.04);
-    transition: all .15s ease;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-  .approver-chip:hover {
-    border-color: #9ebde3;
-    box-shadow: 0 3px 10px rgba(7, 86, 185, 0.10);
-    transform: translateY(-1px);
-  }
-
-  .approver-avatar {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #0756b9, #17376c);
-    color: #ffffff;
-    font-size: 10.5px;
-    font-weight: 800;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-  }
-
-  .approver-info {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-    min-width: 0;
-    overflow: hidden;
-  }
-  .approver-name {
-    font-size: 12px;
-    font-weight: 700;
-    color: #12284c;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-  }
-  .approver-meta {
-    font-size: 10.5px;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
-  }
-
-  .approver-remove-btn {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: none;
-    background: #f1f5f9;
-    color: #64748b;
-    font-size: 13px;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    line-height: 1;
-    margin-left: 2px;
-    transition: all .15s;
-    flex-shrink: 0;
-  }
-  .approver-remove-btn:hover {
-    background: #fee2e2;
-    color: #dc2626;
-  }
-
-  .stage-quick-add-btn {
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 15px;
-    border: 1px dashed #93b3dc;
-    background: #f4f8fe;
-    color: #0756b9;
-    font-size: 11.5px;
-    font-weight: 700;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all .15s;
-    white-space: nowrap;
-  }
-  .stage-quick-add-btn:hover {
-    background: #e5f0fd;
-    border-color: #0756b9;
-  }
-
-  /* =========================================================================
-     RIGHT PALETTE SIDEBAR: SYNCED EMPLOYEES
-     ========================================================================= */
-  .wf-palette-sidebar {
-    background: #ffffff;
-    border: 1px solid #dce5f0;
-    border-radius: 18px;
-    box-shadow: 0 4px 20px rgba(20, 49, 91, 0.04);
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 120px);
-    max-height: 860px;
-    min-height: 520px;
-    position: sticky;
-    top: 90px;
-    overflow: hidden;
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .palette-header {
-    padding: 16px 18px 12px;
-    border-bottom: 1px solid #edf3f8;
-  }
-  .palette-title-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .palette-title {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 800;
-    color: #12284c;
-  }
-  .palette-count {
-    font-size: 11px;
-    font-weight: 800;
-    color: #0756b9;
-    background: #eaf2fb;
-    padding: 2px 7px;
-    border-radius: 10px;
-  }
-  .palette-sub {
-    margin: 3px 0 0;
-    font-size: 11.5px;
-    color: #71829d;
-    line-height: 1.35;
-  }
-
-  .palette-filters {
-    padding: 12px 18px;
-    border-bottom: 1px solid #edf3f8;
-    background: #fbfdff;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .palette-search-box {
-    position: relative;
-    display: flex;
-    align-items: center;
-    width: 100%;
-  }
-  .palette-search-box .search-icon {
-    position: absolute;
-    left: 11px;
-    color: #8c9eb4;
-    pointer-events: none;
-  }
-  .palette-search-box input {
-    width: 100%;
-    height: 35px;
-    padding: 0 28px 0 32px;
-    border: 1px solid #d1dee9;
-    border-radius: 8px;
-    font-size: 12.5px;
-    color: #1e293b;
-    outline: none;
-    transition: all .15s;
-    box-sizing: border-box;
-  }
-  .palette-search-box input:focus {
-    border-color: #0756b9;
-    box-shadow: 0 0 0 2px rgba(7, 86, 185, 0.12);
-  }
-  .clear-search-btn {
-    position: absolute;
-    right: 8px;
-    background: none;
-    border: none;
-    font-size: 16px;
-    color: #94a3b8;
-    cursor: pointer;
-  }
-
-  .palette-filter-row {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .source-pills {
-    display: flex;
-    background: #edf3f8;
-    border-radius: 8px;
-    padding: 2px;
-  }
-  .source-pill {
-    flex: 1;
-    border: none;
-    background: none;
-    padding: 5px 0;
-    font-size: 11px;
-    font-weight: 700;
-    color: #5b6d85;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all .15s;
-  }
-  .source-pill.active {
-    background: #ffffff;
-    color: #0756b9;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  .palette-dept-select {
-    height: 32px;
-    border: 1px solid #d1dee9;
-    border-radius: 6px;
-    padding: 0 8px;
-    font-size: 12px;
-    color: #334155;
-    background: #ffffff;
-    outline: none;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .palette-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 180px;
-  }
-
-  /* Draggable Employee Card */
-  .draggable-emp-card {
-    background: #ffffff;
-    border: 1px solid #dce5f0;
-    border-radius: 10px;
-    padding: 9px 11px;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    cursor: grab;
-    transition: all .15s ease;
-    user-select: none;
-    box-sizing: border-box;
-  }
-  .draggable-emp-card:hover {
-    border-color: #0756b9;
-    box-shadow: 0 4px 12px rgba(7, 86, 185, 0.10);
-    transform: translateY(-1px);
-  }
-  .draggable-emp-card:active {
-    cursor: grabbing;
-  }
-  .draggable-emp-card.dragging {
-    opacity: 0.45;
-    border: 1px dashed #0756b9;
-  }
-
-  .drag-grip {
-    color: #b1c1d4;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-  }
-
-  .emp-card-avatar {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: #eef4fc;
-    color: #0756b9;
-    font-size: 11.5px;
-    font-weight: 800;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    border: 1px solid #d4e2f3;
-  }
-
-  .emp-card-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .emp-card-name {
-    font-size: 12.5px;
-    font-weight: 700;
-    color: #152b53;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .emp-card-sub {
-    font-size: 10.5px;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .emp-source-tag {
-    font-size: 9.5px;
-    font-weight: 800;
-    padding: 2px 5px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    flex-shrink: 0;
-  }
-  .emp-source-tag.staff {
-    background: #eaf3fd;
-    color: #0756b9;
-  }
-  .emp-source-tag.associates {
-    background: #fdf2e9;
-    color: #d97706;
-  }
-
-  .palette-footer {
-    padding: 9px 14px;
-    border-top: 1px solid #edf3f8;
-    background: #fafcff;
-    font-size: 11px;
-    color: #71829d;
-  }
-  .drag-hint {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  /* =========================================================================
-     MODALS: RESPONSIVE
-     ========================================================================= */
-  .wf-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: rgba(10, 29, 65, 0.55);
-    backdrop-filter: blur(4px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    box-sizing: border-box;
-  }
-  .wf-modal.open {
-    display: flex;
-  }
-
-  .wf-modal-box {
-    background: #ffffff;
-    border-radius: 16px;
-    width: min(540px, 94vw);
-    max-height: calc(100vh - 36px);
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 24px 60px rgba(0, 22, 61, 0.25);
-    border: 1px solid #dce6f4;
-    overflow: hidden;
-    animation: modalIn .18s cubic-bezier(.16,1,.3,1);
-    box-sizing: border-box;
-  }
-  .wf-modal-box.modal-sm {
-    width: min(420px, 94vw);
-  }
-
-  @keyframes modalIn {
-    from { opacity: 0; transform: translateY(12px) scale(.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  .wf-modal-header {
-    padding: 18px 22px;
-    border-bottom: 1px solid #e8eff6;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-shrink: 0;
-  }
-  .wf-modal-title {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 800;
-    color: #12284c;
-  }
-  .wf-modal-title.text-danger {
-    color: #dc2626;
-  }
-  .wf-modal-subtitle {
-    margin: 3px 0 0;
-    font-size: 12px;
-    color: #64748b;
-  }
-  .wf-modal-close {
-    background: #f1f5f9;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    font-size: 20px;
-    color: #64748b;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-  }
-  .wf-modal-close:hover {
-    background: #e2e8f0;
-    color: #0f172a;
-  }
-
-  .wf-modal-body {
-    padding: 20px 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    overflow-y: auto;
-    box-sizing: border-box;
-  }
-
-  .wf-form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .wf-form-label {
-    font-size: 11.5px;
-    font-weight: 700;
-    color: #334155;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .wf-form-label .required {
-    color: #dc2626;
-  }
-  .wf-form-input, .wf-form-textarea {
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-size: 13.5px;
-    color: #1e293b;
-    outline: none;
-    transition: all .15s;
-    width: 100%;
-    box-sizing: border-box;
-    font-family: inherit;
-  }
-  .wf-form-input:focus, .wf-form-textarea:focus {
-    border-color: #0756b9;
-    box-shadow: 0 0 0 2px rgba(7, 86, 185, 0.12);
-  }
-  .wf-form-hint {
-    font-size: 11px;
-    color: #71829d;
-  }
-
-  .wf-modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 6px;
-    flex-wrap: wrap;
-  }
-
-  .assign-quick-list {
-    max-height: 280px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .assign-quick-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border: 1px solid #e2eaf3;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all .12s;
-    gap: 10px;
-  }
-  .assign-quick-item:hover {
-    background: #edf5fe;
-    border-color: #0756b9;
-  }
-</style>
 
 <!-- =========================================================================
      WORKFLOW DESIGNER JAVASCRIPT ENGINE
@@ -1946,7 +477,7 @@
       isDirty = false;
     } catch (err) {
       console.error(err);
-      alert('Error loading workflow: ' + err.message);
+      Portal.toast('Could not load that workflow: ' + err.message, 'error');
       setSaveStatus('saved', 'Error loading workflow');
     }
   }
@@ -2417,7 +948,7 @@
 
     const exists = stage.approvers.some(a => a.employee_id === empData.employee_id);
     if (exists) {
-      alert(`${empData.employee_name} (${empData.employee_id}) is already an approver in this stage.`);
+      Portal.toast(`${empData.employee_name} is already an approver in this stage.`, 'info');
       return;
     }
 
@@ -2506,7 +1037,7 @@
       setSaveStatus('unsaved', `Auto-generated ${result.hierarchy_levels.length} subordinate stages for ${hodEmp.department}`);
     } catch (err) {
       console.error('Error auto-generating department hierarchy:', err);
-      alert(`Could not auto-generate hierarchy: ${err.message}`);
+      Portal.toast(`Could not auto-generate the hierarchy: ${err.message}`, 'error');
       markDirty();
       renderCanvas();
     }
@@ -2539,22 +1070,28 @@
     }
   }
 
-  function deleteDepartmentBranch(branchId) {
+  async function deleteDepartmentBranch(branchId) {
     if (!activeFlowData || !activeFlowData.stages) return;
     const hodCount = activeFlowData.stages.filter(s => s.is_hod_stage).length;
     if (hodCount <= 1) {
-      alert('At least one Department HOD branch must be maintained.');
+      Portal.toast('Keep at least one department HOD branch.', 'error');
       return;
     }
 
-    if (!confirm('Remove this department branch and all its subordinate stages?')) return;
+    var removeBranch = await Portal.confirm({
+      title: 'Remove this department branch?',
+      message: 'The branch and every stage below it will be removed from this process.',
+      confirmText: 'Remove branch',
+      danger: true
+    });
+    if (!removeBranch) return;
 
     activeFlowData.stages = activeFlowData.stages.filter(s => s.branch_id !== branchId);
     markDirty();
     renderCanvas();
   }
 
-  function removeApproverFromStage(stageId, empId) {
+  async function removeApproverFromStage(stageId, empId) {
     if (!activeFlowData || !activeFlowData.stages) return;
     const stage = activeFlowData.stages.find(s => s.id === stageId);
     if (!stage || !stage.approvers) return;
@@ -2564,7 +1101,13 @@
     // If removing HOD from a branch, optionally clear its auto-generated subordinates
     if (stage.is_hod_stage && stage.approvers.length === 0) {
       const hasAutoStages = activeFlowData.stages.some(s => s.branch_id === stage.branch_id && s.is_auto_generated);
-      if (hasAutoStages && confirm('HOD was removed. Clear auto-generated subordinate stages for this branch as well?')) {
+      var clearSubordinates = hasAutoStages && await Portal.confirm({
+        title: 'Clear the subordinate stages too?',
+        message: 'The HOD is no longer assigned. The stages generated below them can go as well.',
+        confirmText: 'Clear stages',
+        danger: true
+      });
+      if (clearSubordinates) {
         activeFlowData.stages = activeFlowData.stages.filter(s => {
           return !(s.branch_id === stage.branch_id && s.is_auto_generated);
         });
@@ -2585,31 +1128,43 @@
     openAssignModalForNewBranch();
   }
 
-  function deleteStage(stageId) {
+  async function deleteStage(stageId) {
     if (!activeFlowData || !activeFlowData.stages) return;
     const stage = activeFlowData.stages.find(s => s.id === stageId);
     if (!stage) return;
 
     if (stage.is_final || stage.is_hr_stage || stage.order === 1 || stage.order === 2) {
-      alert('Step 1 (Unit Head) and Step 2 (HR Head) are constant foundation stages and cannot be deleted.');
+      Portal.toast('Unit Head and HR Head are fixed stages and cannot be deleted.', 'error');
       return;
     }
 
     if (stage.is_hod_stage) {
-      deleteDepartmentBranch(stage.branch_id);
+      await deleteDepartmentBranch(stage.branch_id);
       return;
     }
 
-    if (!confirm(`Delete stage "${stage.name}"?`)) return;
+    var removeStage = await Portal.confirm({
+      title: 'Delete this stage?',
+      message: `"${stage.name}" will be removed from this process.`,
+      confirmText: 'Delete stage',
+      danger: true
+    });
+    if (!removeStage) return;
 
     activeFlowData.stages = activeFlowData.stages.filter(s => s.id !== stageId);
     markDirty();
     renderCanvas();
   }
 
-  function clearAllApprovers() {
+  async function clearAllApprovers() {
     if (!activeFlowData || !activeFlowData.stages) return;
-    if (!confirm('Clear all assigned approvers across all stages in this process?')) return;
+    var clearAll = await Portal.confirm({
+      title: 'Clear every approver?',
+      message: 'All assigned approvers across all stages in this process will be removed.',
+      confirmText: 'Clear approvers',
+      danger: true
+    });
+    if (!clearAll) return;
 
     activeFlowData.stages.forEach(s => {
       s.approvers = [];
@@ -2655,7 +1210,7 @@
       isDirty = false;
     } catch (err) {
       console.error(err);
-      alert('Save failed: ' + err.message);
+      Portal.toast('Save failed: ' + err.message, 'error');
       setSaveStatus('unsaved', 'Error saving changes');
     } finally {
       btnSaveWf.disabled = false;
@@ -2744,7 +1299,13 @@
     // Process Switcher
     wfSelect.addEventListener('change', async function() {
       if (isDirty) {
-        if (!confirm('You have unsaved changes in the current workflow. Discard and switch?')) {
+        var discard = await Portal.confirm({
+          title: 'Discard unsaved changes?',
+          message: 'Switching processes now loses the edits you have not saved.',
+          confirmText: 'Discard and switch',
+          danger: true
+        });
+        if (!discard) {
           this.value = currentWorkflowId;
           return;
         }
@@ -2831,7 +1392,7 @@
         modalNewWf.classList.remove('open');
         await loadWorkflow(result.id);
       } catch (err) {
-        alert('Could not create workflow: ' + err.message);
+        Portal.toast('Could not create the process: ' + err.message, 'error');
       }
     });
 
@@ -2875,7 +1436,7 @@
 
         modalRenameWf.classList.remove('open');
       } catch (err) {
-        alert('Rename failed: ' + err.message);
+        Portal.toast('Rename failed: ' + err.message, 'error');
       }
     });
 
@@ -2921,7 +1482,7 @@
           `;
         }
       } catch (err) {
-        alert('Delete failed: ' + err.message);
+        Portal.toast('Delete failed: ' + err.message, 'error');
       }
     });
 
