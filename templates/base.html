@@ -48,7 +48,7 @@
            {% if active=='dashboard' %}aria-current="page"{% endif %}>
           <span class="nav-dot"></span>Requests &amp; Forms
         </a>
-        {% if session.get('role') in ['dept_head', 'unit_head'] %}
+        {% if session.get('role') in ['dept_head', 'hr_head', 'unit_head'] %}
         <a class="nav-item {% if active=='approvals' %}active{% endif %}"
            href="{{ url_for('approvals') }}"
            {% if active=='approvals' %}aria-current="page"{% endif %}>
@@ -86,8 +86,9 @@
             <label for="role-select"><span>View as</span></label>
             <select id="role-select" name="role" onchange="this.form.submit()">
               <option value="employee" {% if session.get('role')=='employee' %}selected{% endif %}>Employee</option>
-              <option value="dept_head" {% if session.get('role')=='dept_head' %}selected{% endif %}>Department head</option>
-              <option value="unit_head" {% if session.get('role')=='unit_head' %}selected{% endif %}>Unit head</option>
+              <option value="dept_head" {% if session.get('role')=='dept_head' %}selected{% endif %}>Department Head (HOD)</option>
+              <option value="hr_head" {% if session.get('role')=='hr_head' %}selected{% endif %}>HR Head</option>
+              <option value="unit_head" {% if session.get('role')=='unit_head' %}selected{% endif %}>Unit Head</option>
             </select>
           </form>
         {% endif %}

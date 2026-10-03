@@ -454,46 +454,95 @@
     var stepper = document.getElementById('utl-stepper-timeline');
     stepper.innerHTML = '';
 
-    var history = reqData.approval_history || [];
-    if (history.length === 0) {
-      history = [
-        { stage: 'Submission', action: 'submitted', actor: reqData.applicant_name || 'You', timestamp: reqData.created_at, remarks: 'Request submitted for review' }
-      ];
-    }
+    var stages = (reqData.details && reqData.details.stages) || [];
+    if (stages.length > 0) {
+      // 1. Render Hierarchy Pipeline Stages
+      stages.forEach(function(stg) {
+        var isCompleted = false;
+        var isCurrent = false;
+        var isRejected = false;
 
-    history.forEach(function(item, idx) {
-      var isCompleted = item.action === 'approved' || item.action === 'submitted';
-      var isRejected = item.action === 'rejected';
-      var nodeClass = isRejected ? 'rejected' : (isCompleted ? 'completed' : 'current');
+        if (reqData.status === 'approved') {
+          isCompleted = true;
+        } else if (reqData.status === 'rejected') {
+          if (stg.order < reqData.current_step_order) isCompleted = true;
+          else if (stg.order === reqData.current_step_order) isRejected = true;
+        } else { // pending
+          if (stg.order < reqData.current_step_order) isCompleted = true;
+          else if (stg.order === reqData.current_step_order) isCurrent = true;
+        }
 
-      var node = document.createElement('div');
-      node.className = 'stepper-node ' + nodeClass;
-      node.innerHTML =
-        '<div class="stepper-marker">' + (idx + 1) + '</div>' +
-        '<div class="stepper-body">' +
-          '<div class="stepper-title-row">' +
-            '<span class="stepper-stage-name">' + (item.stage || 'Review Stage') + ' (' + (item.action || 'Updated').toUpperCase() + ')</span>' +
-            '<span class="stepper-time">' + (item.timestamp || '') + '</span>' +
-          '</div>' +
-          '<div class="stepper-actor">By: <strong>' + (item.actor || 'Approver') + '</strong></div>' +
-          (item.remarks ? '<div class="stepper-remarks">"' + item.remarks + '"</div>' : '') +
-        '</div>';
-      stepper.appendChild(node);
-    });
+        var nodeClass = isRejected ? 'rejected' : (isCompleted ? 'completed' : (isCurrent ? 'current' : ''));
+        var markerSymbol = isRejected ? '&#10006;' : (isCompleted ? '&#10004;' : (isCurrent ? '&bull;' : stg.order));
 
-    if (reqData.status === 'pending') {
-      var pendingNode = document.createElement('div');
-      pendingNode.className = 'stepper-node current';
-      pendingNode.innerHTML =
-        '<div class="stepper-marker">&bull;</div>' +
-        '<div class="stepper-body">' +
-          '<div class="stepper-title-row">' +
-            '<span class="stepper-stage-name">' + reqData.current_stage + '</span>' +
-            '<span class="stepper-time" style="color:#d97706; font-weight:700;">Awaiting Decision</span>' +
-          '</div>' +
-          '<div class="stepper-actor">Currently under review by authorized departmental approvers.</div>' +
-        '</div>';
-      stepper.appendChild(pendingNode);
+        var statusBadge = '';
+        if (isCompleted) {
+          statusBadge = '<span style="color:#16a34a; font-weight:700;">Completed</span>';
+        } else if (isCurrent) {
+          statusBadge = '<span style="color:#d97706; font-weight:700;">Awaiting Review</span>';
+        } else if (isRejected) {
+          statusBadge = '<span style="color:#dc2626; font-weight:700;">Rejected</span>';
+        } else {
+          statusBadge = '<span style="color:#94a3b8; font-weight:600;">Upcoming</span>';
+        }
+
+        var node = document.createElement('div');
+        node.className = 'stepper-node ' + nodeClass;
+        node.innerHTML =
+          '<div class="stepper-marker">' + markerSymbol + '</div>' +
+          '<div class="stepper-body">' +
+            '<div class="stepper-title-row">' +
+              '<span class="stepper-stage-name">Step ' + stg.order + ': ' + (stg.name || 'Stage Review') + '</span>' +
+              '<span class="stepper-time">' + statusBadge + '</span>' +
+            '</div>' +
+            '<div class="stepper-actor">Approver: <strong>' + (stg.approver_name || 'Designated Approver') + '</strong>' +
+              (stg.description ? ' &middot; <span style="color:#64748b; font-size:12px;">' + stg.description + '</span>' : '') +
+            '</div>' +
+          '</div>';
+        stepper.appendChild(node);
+      });
+    } else {
+      var history = reqData.approval_history || [];
+      if (history.length === 0) {
+        history = [
+          { stage: 'Submission', action: 'submitted', actor: reqData.applicant_name || 'You', timestamp: reqData.created_at, remarks: 'Request submitted for review' }
+        ];
+      }
+
+      history.forEach(function(item, idx) {
+        var isCompleted = item.action === 'approved' || item.action === 'submitted';
+        var isRejected = item.action === 'rejected';
+        var nodeClass = isRejected ? 'rejected' : (isCompleted ? 'completed' : 'current');
+
+        var node = document.createElement('div');
+        node.className = 'stepper-node ' + nodeClass;
+        node.innerHTML =
+          '<div class="stepper-marker">' + (idx + 1) + '</div>' +
+          '<div class="stepper-body">' +
+            '<div class="stepper-title-row">' +
+              '<span class="stepper-stage-name">' + (item.stage || 'Review Stage') + ' (' + (item.action || 'Updated').toUpperCase() + ')</span>' +
+              '<span class="stepper-time">' + (item.timestamp || '') + '</span>' +
+            '</div>' +
+            '<div class="stepper-actor">By: <strong>' + (item.actor || 'Approver') + '</strong></div>' +
+            (item.remarks ? '<div class="stepper-remarks">"' + item.remarks + '"</div>' : '') +
+          '</div>';
+        stepper.appendChild(node);
+      });
+
+      if (reqData.status === 'pending') {
+        var pendingNode = document.createElement('div');
+        pendingNode.className = 'stepper-node current';
+        pendingNode.innerHTML =
+          '<div class="stepper-marker">&bull;</div>' +
+          '<div class="stepper-body">' +
+            '<div class="stepper-title-row">' +
+              '<span class="stepper-stage-name">' + reqData.current_stage + '</span>' +
+              '<span class="stepper-time" style="color:#d97706; font-weight:700;">Awaiting Decision</span>' +
+            '</div>' +
+            '<div class="stepper-actor">Currently under review by authorized departmental approvers.</div>' +
+          '</div>';
+        stepper.appendChild(pendingNode);
+      }
     }
 
     window.Portal.openModal('user-timeline-modal');

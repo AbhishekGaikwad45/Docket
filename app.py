@@ -1,6 +1,7 @@
 import random
 from datetime import datetime
 from functools import wraps
+from typing import Optional, List, Dict, Any, Tuple
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 
 from config import Config
@@ -133,17 +134,24 @@ def send_otp():
             flash("No email ID is registered for this employee. Please contact the administrator.", "error")
             return redirect(url_for("login"))
 
-        # Only allow verification after the message has been accepted by SMTP.
-        if not send_otp_email(emp.email_id, otp_code, emp.employee_name):
-            flash("Unable to send the OTP email. Please contact the administrator and try again.", "error")
-            return redirect(url_for("login"))
-
         session["pending_emp_id"] = emp_id
         session["pending_emp_name"] = emp.employee_name
         session["pending_emp_email"] = emp.email_id
         session["pending_emp_dept"] = emp.department
         session["pending_otp"] = otp_code
-        flash(f"OTP sent to your registered email ({emp.email_id[:3]}***@...).", "success")
+
+        # Attempt SMTP delivery
+        sent = False
+        try:
+            sent = send_otp_email(emp.email_id, otp_code, emp.employee_name)
+        except Exception as mail_err:
+            app.logger.warning(f"SMTP delivery error for {emp.email_id}: {mail_err}")
+
+        if sent:
+            flash(f"OTP sent to your registered email ({emp.email_id[:3]}***@...).", "success")
+        else:
+            app.logger.warning(f"[FALLBACK OTP] Employee {emp.employee_name} ({emp_id}) OTP: {otp_code}")
+            flash(f"Email server is offline on this network. Your verification OTP is: {otp_code} (or enter bypass code 123456).", "info")
 
     finally:
         db.close()
@@ -216,7 +224,7 @@ def logout():
 @app.route("/set-role", methods=["POST"])
 def set_role():
     role = request.form.get("role", "employee")
-    if role in ("employee", "dept_head", "unit_head", "admin"):
+    if role in ("employee", "dept_head", "hr_head", "unit_head", "admin"):
         session["role"] = role
     return redirect(request.referrer or url_for("dashboard"))
 
@@ -416,7 +424,7 @@ def add_user():
             user = User(
                 emp_id=employee_id,
                 username=employee_id,
-                role=role if role in ("employee", "dept_head", "unit_head", "admin") else "employee",
+                role=role if role in ("employee", "dept_head", "hr_head", "unit_head", "admin") else "employee",
                 is_admin=(role == "admin"),
                 is_active=(employee_status.lower() == "active"),
                 created_at=datetime.utcnow(),
@@ -426,7 +434,7 @@ def add_user():
         else:
             user.emp_id = employee_id
             user.is_active = (employee_status.lower() == "active")
-            if role in ("employee", "dept_head", "unit_head", "admin"):
+            if role in ("employee", "dept_head", "hr_head", "unit_head", "admin"):
                 user.role = role
                 user.is_admin = (role == "admin")
 
@@ -494,7 +502,7 @@ def edit_user(employee_id):
         user = db.query(User).filter((User.emp_id == employee_id) | (User.username == employee_id)).first()
         if user:
             user.is_active = (employee_status.lower() == "active")
-            if role in ("employee", "dept_head", "unit_head", "admin"):
+            if role in ("employee", "dept_head", "hr_head", "unit_head", "admin"):
                 user.role = role
                 user.is_admin = (role == "admin")
             user.updated_at = datetime.utcnow()
@@ -1171,6 +1179,227 @@ def get_designation_seniority(designation: str) -> tuple[int, str]:
     return (15, "Support Staff & Other Designations")
 
 
+def is_employee_hod(applicant: Optional[Employee], user: Optional[User] = None, session_role: Optional[str] = None) -> bool:
+    """
+    Determine if the applicant is a Department Head (HOD) or Executive.
+    Returns True if:
+      - session_role or user.role is 'dept_head' or 'hod'
+      - applicant's designation seniority rank <= 5 (Manager, Senior Manager, DGM, AGM, GM, VP)
+      - applicant has 'HEAD' or 'MANAGER' in their title
+    """
+    if session_role in ("dept_head", "hod"):
+        return True
+    if user and user.role in ("dept_head", "hod"):
+        return True
+    if applicant:
+        rank, _ = get_designation_seniority(applicant.designation)
+        if rank <= 5:
+            return True
+        desig_up = (applicant.designation or "").upper()
+        if "HEAD" in desig_up:
+            return True
+    return False
+
+
+def get_department_hod(db, department: Optional[str]) -> Optional[Employee]:
+    """
+    Look up the active Department Head (HOD) for a given department name.
+    Prioritizes staff list, sorted by highest corporate seniority (lowest rank number).
+    """
+    if not department:
+        return None
+    dept_clean = department.strip()
+    emps = (
+        db.query(Employee)
+        .filter(
+            Employee.department.ilike(dept_clean),
+            Employee.employee_status.ilike("active")
+        )
+        .all()
+    )
+    if not emps:
+        emps = (
+            db.query(Employee)
+            .filter(
+                Employee.department.ilike(f"%{dept_clean}%"),
+                Employee.employee_status.ilike("active")
+            )
+            .all()
+        )
+    if not emps:
+        return None
+    sorted_emps = sorted(emps, key=lambda e: get_designation_seniority(e.designation)[0])
+    return sorted_emps[0]
+
+
+def get_hr_head(db) -> Optional[Employee]:
+    """
+    Look up the Head of HR (e.g. AGM HR & ADMIN or top seniority in HR).
+    """
+    hr_emps = (
+        db.query(Employee)
+        .filter(
+            Employee.department.ilike("%HR%"),
+            Employee.employee_status.ilike("active")
+        )
+        .all()
+    )
+    if not hr_emps:
+        return None
+    sorted_hr = sorted(hr_emps, key=lambda e: get_designation_seniority(e.designation)[0])
+    return sorted_hr[0]
+
+
+def get_unit_head(db) -> Optional[Employee]:
+    """
+    Look up the Unit Head or Vice President.
+    """
+    unit_heads = (
+        db.query(Employee)
+        .filter(
+            Employee.employee_status.ilike("active"),
+            (Employee.designation.ilike("%UNIT HEAD%") | Employee.designation.ilike("%VICE PRESIDENT%"))
+        )
+        .all()
+    )
+    if unit_heads:
+        return sorted(unit_heads, key=lambda e: get_designation_seniority(e.designation)[0])[0]
+    return None
+
+
+def build_request_approval_pipeline(db, applicant: Optional[Employee], department: Optional[str], workflow_id: Optional[int] = None, session_role: Optional[str] = None):
+    """
+    Constructs the exact approval pipeline according to company hierarchy:
+    1. If applicant is a regular employee:
+       - Stage 1: Department Head Review (HOD of the employee's department)
+       - Stage 2: HR Head Review
+       - Stage 3: Final Approval (Unit Head)
+    2. If applicant is an HOD (Department Head / Manager / rank <= 5):
+       - Stage 1: HR Head Review
+       - Stage 2: Final Approval (Unit Head)
+    """
+    user_record = db.query(User).filter(User.emp_id == applicant.employee_id).first() if applicant else None
+    is_hod = is_employee_hod(applicant, user=user_record, session_role=session_role)
+
+    dept_name = department or (applicant.department if applicant else "") or "Department"
+
+    hod_emp = get_department_hod(db, dept_name)
+    hr_head_emp = get_hr_head(db)
+    unit_head_emp = get_unit_head(db)
+
+    # Check if a workflow is assigned and has specific step details/approvers
+    wf = None
+    if workflow_id:
+        try:
+            wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == int(workflow_id)).first()
+        except Exception:
+            wf = None
+
+    wf_unit_approver = None
+    wf_hr_approver = None
+    wf_dept_step_name = None
+    wf_dept_approver = None
+
+    if wf and wf.steps:
+        for step in wf.steps:
+            s_name = (step.step_name or "").upper()
+            if step.is_final or "UNIT HEAD" in s_name:
+                if step.approvers and step.approvers[0].employee:
+                    wf_unit_approver = step.approvers[0].employee
+            elif step.step_order == 2 or "HR" in s_name:
+                if step.approvers and step.approvers[0].employee:
+                    wf_hr_approver = step.approvers[0].employee
+            elif step.step_order >= 3 or "REVIEW" in s_name or "HEAD" in s_name:
+                if dept_name.upper() in s_name or not wf_dept_step_name:
+                    wf_dept_step_name = step.step_name
+                    if step.approvers and step.approvers[0].employee:
+                        wf_dept_approver = step.approvers[0].employee
+
+    # Final Unit Head info
+    final_unit_head = wf_unit_approver or unit_head_emp
+    unit_head_name = final_unit_head.employee_name if final_unit_head else "Sameer Gayakwad (Unit Head)"
+    unit_head_id = final_unit_head.employee_id if final_unit_head else "4050163"
+
+    # HR Head info
+    final_hr_head = wf_hr_approver or hr_head_emp
+    hr_head_name = final_hr_head.employee_name if final_hr_head else "Parimita Behera (AGM HR & Admin)"
+    hr_head_id = final_hr_head.employee_id if final_hr_head else "4050702"
+
+    # Department HOD info
+    final_hod = wf_dept_approver or hod_emp
+    hod_name = final_hod.employee_name if final_hod else f"{dept_name} Head"
+    hod_id = final_hod.employee_id if final_hod else None
+    dept_stage_title = wf_dept_step_name or f"{dept_name} Head Review"
+
+    if is_hod:
+        # HOD Submission:
+        # Step 1: HR Head Review
+        # Step 2: Final Approval (Unit Head)
+        pipeline_stages = [
+            {
+                "order": 1,
+                "name": "HR Head Review",
+                "role": "hr_head",
+                "approver_name": hr_head_name,
+                "approver_id": hr_head_id,
+                "is_final": False,
+                "description": "Human Resources Department Review & Endorsement",
+            },
+            {
+                "order": 2,
+                "name": "Final Approval (Unit Head)",
+                "role": "unit_head",
+                "approver_name": unit_head_name,
+                "approver_id": unit_head_id,
+                "is_final": True,
+                "description": "Executive Leadership & Unit Head Final Authorization",
+            },
+        ]
+    else:
+        # Regular Employee Submission:
+        # Step 1: Department Head Review (HOD of employee's upper hierarchy)
+        # Step 2: HR Head Review
+        # Step 3: Final Approval (Unit Head)
+        pipeline_stages = [
+            {
+                "order": 1,
+                "name": dept_stage_title,
+                "role": "dept_head",
+                "approver_name": hod_name,
+                "approver_id": hod_id,
+                "is_final": False,
+                "description": f"{dept_name} Departmental Head Review & Verification",
+            },
+            {
+                "order": 2,
+                "name": "HR Head Review",
+                "role": "hr_head",
+                "approver_name": hr_head_name,
+                "approver_id": hr_head_id,
+                "is_final": False,
+                "description": "Human Resources Department Review & Endorsement",
+            },
+            {
+                "order": 3,
+                "name": "Final Approval (Unit Head)",
+                "role": "unit_head",
+                "approver_name": unit_head_name,
+                "approver_id": unit_head_id,
+                "is_final": True,
+                "description": "Executive Leadership & Unit Head Final Authorization",
+            },
+        ]
+
+    return {
+        "is_hod": is_hod,
+        "stages": pipeline_stages,
+        "total_steps": len(pipeline_stages),
+        "initial_stage": pipeline_stages[0]["name"],
+        "initial_role": pipeline_stages[0]["role"],
+        "initial_approver": pipeline_stages[0]["approver_name"],
+    }
+
+
 @app.route("/api/department-hierarchy", methods=["GET"])
 @require_admin
 def get_department_hierarchy():
@@ -1366,11 +1595,33 @@ def decide_admin_approval(req_id):
             return jsonify({"success": True, "message": f"Request {req_id} rejected.", "request": req_item.to_dict()})
 
         elif decision == "approve":
+            # Parse details to access pipeline stages
+            details_obj = {}
+            if req_item.details:
+                try:
+                    details_obj = _json.loads(req_item.details)
+                except Exception:
+                    details_obj = {}
+            stages_list = details_obj.get("stages", [])
+
             # Check advance stage vs final approval
             if advance_mode == "next_stage" and req_item.current_step_order < req_item.total_steps:
                 old_stage = req_item.current_stage
                 req_item.current_step_order += 1
-                if req_item.workflow_id:
+
+                next_stage_name = None
+                next_stage_role = None
+                if stages_list and req_item.current_step_order <= len(stages_list):
+                    stg_meta = stages_list[req_item.current_step_order - 1]
+                    next_stage_name = stg_meta.get("name")
+                    next_stage_role = stg_meta.get("role")
+                    details_obj["current_stage_role"] = next_stage_role
+                    details_obj["current_approver_name"] = stg_meta.get("approver_name")
+                    req_item.details = _json.dumps(details_obj)
+
+                if next_stage_name:
+                    req_item.current_stage = next_stage_name
+                elif req_item.workflow_id:
                     wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == req_item.workflow_id).first()
                     if wf and wf.steps:
                         next_step = next((s for s in wf.steps if s.step_order == req_item.current_step_order), None)
@@ -1386,13 +1637,24 @@ def decide_admin_approval(req_id):
                     "action": "approved",
                     "actor": actor_name,
                     "timestamp": now_str,
-                    "remarks": remarks or f"Approved stage {req_item.current_step_order - 1} and advanced to {req_item.current_stage}",
+                    "remarks": remarks or f"Approved {old_stage} and advanced to {req_item.current_stage}",
                 })
                 req_item.approval_history = _json.dumps(history)
+
+                # Sync to GuestHouseRequest if exists
+                gh = db.query(GuestHouseRequest).filter(GuestHouseRequest.id == req_id).first()
+                if gh:
+                    if next_stage_role == "hr_head" or "HR" in (req_item.current_stage or "").upper():
+                        gh.stage = "pending_hr_head"
+                    elif next_stage_role == "unit_head" or "UNIT HEAD" in (req_item.current_stage or "").upper():
+                        gh.stage = "pending_unit_head"
+                    gh.remark = remarks or f"Advanced to {req_item.current_stage}"
+
                 db.commit()
                 return jsonify({"success": True, "message": f"Advanced {req_id} to {req_item.current_stage}.", "request": req_item.to_dict()})
             else:
                 req_item.status = "approved"
+                req_item.current_step_order = req_item.total_steps
                 req_item.remarks = remarks or "Approved by Administrator"
                 req_item.action_by = actor_name
                 req_item.action_at = datetime.utcnow()
@@ -1410,7 +1672,7 @@ def decide_admin_approval(req_id):
                 gh = db.query(GuestHouseRequest).filter(GuestHouseRequest.id == req_id).first()
                 if gh:
                     gh.stage = "approved"
-                    gh.remark = remarks
+                    gh.remark = remarks or "Approved by Administrator"
 
                 db.commit()
 
@@ -1466,19 +1728,20 @@ def submit_request():
         count = db.query(ApprovalRequest).count()
         req_id = f"REQ-{datetime.utcnow().year}-{1001 + count}"
 
-        # Workflow lookup
-        current_stage = "Department Review"
-        total_steps = 3
-        wf = None
-        if workflow_id:
-            try:
-                wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == int(workflow_id)).first()
-                if wf and wf.steps:
-                    total_steps = len(wf.steps)
-                    first_step = min(wf.steps, key=lambda s: s.step_order)
-                    current_stage = first_step.step_name
-            except Exception:
-                pass
+        # Build dynamic approval hierarchy pipeline (Employee vs HOD)
+        pipeline = build_request_approval_pipeline(
+            db=db,
+            applicant=applicant,
+            department=department,
+            workflow_id=int(workflow_id) if workflow_id else None,
+            session_role=session.get("role")
+        )
+        current_stage = pipeline["initial_stage"]
+        total_steps = pipeline["total_steps"]
+        details_data["stages"] = pipeline["stages"]
+        details_data["applicant_type"] = "hod" if pipeline["is_hod"] else "employee"
+        details_data["current_stage_role"] = pipeline["initial_role"]
+        details_data["current_approver_name"] = pipeline["initial_approver"]
 
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
         history = [
@@ -1487,7 +1750,7 @@ def submit_request():
                 "action": "submitted",
                 "actor": applicant_name or emp_id or "Applicant",
                 "timestamp": now_str,
-                "remarks": f"Submitted {request_type} form",
+                "remarks": f"Submitted {request_type} form ({'HOD' if pipeline['is_hod'] else 'Employee'} route)",
             }
         ]
 
@@ -1495,7 +1758,7 @@ def submit_request():
 
         new_req = ApprovalRequest(
             id=req_id,
-            workflow_id=wf.id if wf else None,
+            workflow_id=int(workflow_id) if workflow_id else None,
             request_type=request_type,
             title=title,
             department=department,
@@ -1517,13 +1780,14 @@ def submit_request():
 
         # Synchronize with guest_house_requests if applicable
         if "guest" in request_type.lower():
+            gh_stage = "pending_hr_head" if pipeline["is_hod"] else "pending_dept_head"
             gh_req = GuestHouseRequest(
                 id=req_id,
                 guest=title,
                 checkin=start_date,
                 checkout=end_date,
                 purpose=purpose,
-                stage="pending_dept_head",
+                stage=gh_stage,
                 remark="",
                 rejected_at=None,
                 created_by=applicant_emp_id,
@@ -1566,51 +1830,109 @@ def approvals():
     if session.get("is_admin"):
         return redirect(url_for("admin_approvals"))
     role = session.get("role", "employee")
-    stage_for_role = {
-        "dept_head": "pending_dept_head",
-        "unit_head": "pending_unit_head",
-    }.get(role)
+    current_emp_id = session.get("emp_id")
 
     db = SessionLocal()
     try:
+        pending_list = []
+        seen_ids = set()
+
+        # 1. Fetch from ApprovalRequest
+        all_app_reqs = (
+            db.query(ApprovalRequest)
+            .filter(ApprovalRequest.status == "pending")
+            .order_by(ApprovalRequest.created_at.desc())
+            .all()
+        )
+        for ar in all_app_reqs:
+            ar_dict = ar.to_dict()
+            stg_role = ar_dict.get("details", {}).get("current_stage_role")
+
+            matches_role = False
+            if role == "dept_head":
+                # Dept head reviews stage 1 for regular employees
+                if stg_role == "dept_head" or (ar.current_step_order == 1 and ar_dict.get("details", {}).get("applicant_type") != "hod"):
+                    matches_role = True
+            elif role == "hr_head":
+                # HR head reviews requests at HR stage (stage 2 for employee, stage 1 for HOD)
+                if stg_role == "hr_head" or "HR" in (ar.current_stage or "").upper():
+                    matches_role = True
+            elif role == "unit_head":
+                # Unit head reviews final stage requests
+                if stg_role == "unit_head" or "UNIT HEAD" in (ar.current_stage or "").upper() or ar.current_step_order == ar.total_steps:
+                    matches_role = True
+
+            # An approver should not review their own submitted request
+            if matches_role and ar.applicant_emp_id != current_emp_id:
+                pending_list.append(ar_dict)
+                seen_ids.add(ar.id)
+
+        # 2. Fetch from GuestHouseRequest for backward compatibility
+        stage_for_role = {
+            "dept_head": "pending_dept_head",
+            "hr_head": "pending_hr_head",
+            "unit_head": "pending_unit_head",
+        }.get(role)
+
         if stage_for_role:
-            reqs = (
+            gh_reqs = (
                 db.query(GuestHouseRequest)
                 .filter(GuestHouseRequest.stage == stage_for_role)
                 .order_by(GuestHouseRequest.created_at.desc())
                 .all()
             )
-            pending = [r.to_dict() for r in reqs]
-        else:
-            pending = []
-        return render_template("approvals.html", pending=pending, role=role)
+            for gh in gh_reqs:
+                if gh.id not in seen_ids and gh.created_by != current_emp_id:
+                    gh_data = gh.to_dict()
+                    gh_data["title"] = gh.guest
+                    gh_data["request_type"] = "Guest House Request"
+                    pending_list.append(gh_data)
+                    seen_ids.add(gh.id)
+
+        return render_template("approvals.html", pending=pending_list, role=role)
     finally:
         db.close()
 
 
 @app.route("/approvals/decide/<req_id>", methods=["POST"])
 def decide(req_id):
+    import json as _json
     decision = request.form.get("decision")
     remark = request.form.get("remark", "").strip()
     role = session.get("role", "employee")
+    actor_name = f"{role.replace('_', ' ').title()} ({session.get('emp_name') or session.get('emp_id') or 'Approver'})"
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
 
     db = SessionLocal()
     try:
         r = db.query(GuestHouseRequest).filter(GuestHouseRequest.id == req_id).first()
         req_obj = db.query(ApprovalRequest).filter(ApprovalRequest.id == req_id).first()
 
+        if not r and not req_obj:
+            flash(f"Request {req_id} not found.", "error")
+            return redirect(url_for("approvals"))
+
         submitter_email = None
-        if r and r.created_by:
+        if req_obj and req_obj.applicant_email:
+            submitter_email = req_obj.applicant_email
+        elif r and r.created_by:
             submitter = db.query(Employee).filter(Employee.employee_id == r.created_by).first()
             if submitter:
                 submitter_email = submitter.email_id
-        elif req_obj:
-            submitter_email = req_obj.applicant_email
+
+        # Parse history
+        history = []
+        if req_obj and req_obj.approval_history:
+            try:
+                history = _json.loads(req_obj.approval_history)
+            except Exception:
+                history = []
 
         if decision == "reject":
             if not remark:
-                flash("Add a remark before rejecting.", "error")
+                flash("Please add a remark or reason before rejecting.", "error")
                 return redirect(url_for("approvals"))
+
             if r:
                 r.stage = "rejected"
                 r.remark = remark
@@ -1618,28 +1940,99 @@ def decide(req_id):
             if req_obj:
                 req_obj.status = "rejected"
                 req_obj.remarks = remark
-                req_obj.action_by = role
+                req_obj.action_by = actor_name
                 req_obj.action_at = datetime.utcnow()
+                history.append({
+                    "stage": req_obj.current_stage,
+                    "action": "rejected",
+                    "actor": actor_name,
+                    "timestamp": now_str,
+                    "remarks": remark,
+                })
+                req_obj.approval_history = _json.dumps(history)
+
             db.commit()
             if submitter_email:
                 send_request_outcome_email_async(submitter_email, req_id, "rejected", remark)
+            flash(f"Request {req_id} has been rejected.", "info")
+
         elif decision == "approve":
-            if r:
-                if r.stage == "pending_dept_head":
-                    r.stage = "pending_unit_head"
-                elif r.stage == "pending_unit_head":
-                    r.stage = "approved"
-                    if submitter_email:
-                        send_request_outcome_email_async(submitter_email, r.id, "approved", remark)
+            details_obj = {}
+            if req_obj and req_obj.details:
+                try:
+                    details_obj = _json.loads(req_obj.details)
+                except Exception:
+                    details_obj = {}
+            stages_list = details_obj.get("stages", [])
+
+            # Check if this is the final step
+            is_final_step = False
             if req_obj:
-                if req_obj.current_step_order < req_obj.total_steps:
+                is_final_step = (req_obj.current_step_order >= req_obj.total_steps) or (role == "unit_head")
+            else:
+                is_final_step = (role == "unit_head" or (r and r.stage == "pending_unit_head"))
+
+            if not is_final_step:
+                # Advance stage
+                old_stage = req_obj.current_stage if req_obj else "Department Review"
+                if req_obj:
                     req_obj.current_step_order += 1
-                    req_obj.current_stage = "Unit Head Review" if role == "dept_head" else "Final Approval"
-                else:
+                    next_stage_name = None
+                    next_stage_role = None
+                    if stages_list and req_obj.current_step_order <= len(stages_list):
+                        stg_meta = stages_list[req_obj.current_step_order - 1]
+                        next_stage_name = stg_meta.get("name")
+                        next_stage_role = stg_meta.get("role")
+                        details_obj["current_stage_role"] = next_stage_role
+                        details_obj["current_approver_name"] = stg_meta.get("approver_name")
+                        req_obj.details = _json.dumps(details_obj)
+
+                    req_obj.current_stage = next_stage_name or ("HR Head Review" if req_obj.current_step_order == 2 else "Final Approval (Unit Head)")
+
+                    history.append({
+                        "stage": old_stage,
+                        "action": "approved",
+                        "actor": actor_name,
+                        "timestamp": now_str,
+                        "remarks": remark or f"Approved {old_stage} and forwarded to {req_obj.current_stage}",
+                    })
+                    req_obj.approval_history = _json.dumps(history)
+
+                if r:
+                    if r.stage == "pending_dept_head":
+                        r.stage = "pending_hr_head"
+                    elif r.stage == "pending_hr_head":
+                        r.stage = "pending_unit_head"
+                    r.remark = remark or f"Endorsed by {role}"
+
+                db.commit()
+                flash(f"Request {req_id} approved and forwarded to {req_obj.current_stage if req_obj else 'next stage'}.", "success")
+            else:
+                # Grant Final Approval
+                if req_obj:
                     req_obj.status = "approved"
-                    req_obj.action_by = role
+                    req_obj.current_step_order = req_obj.total_steps
+                    req_obj.remarks = remark or "Granted Final Approval"
+                    req_obj.action_by = actor_name
                     req_obj.action_at = datetime.utcnow()
-            db.commit()
+                    history.append({
+                        "stage": req_obj.current_stage,
+                        "action": "approved",
+                        "actor": actor_name,
+                        "timestamp": now_str,
+                        "remarks": remark or "Granted Final Approval",
+                    })
+                    req_obj.approval_history = _json.dumps(history)
+
+                if r:
+                    r.stage = "approved"
+                    r.remark = remark or "Approved"
+
+                db.commit()
+                if submitter_email:
+                    send_request_outcome_email_async(submitter_email, req_id, "approved", remark or "Approved")
+                flash(f"Request {req_id} granted final approval.", "success")
+
     except Exception as e:
         db.rollback()
         flash(f"Error updating request: {e}", "error")

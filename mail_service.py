@@ -51,7 +51,7 @@ def send_email(
         if html_content:
             msg.attach(MIMEText(html_content, "html"))
 
-        with smtplib.SMTP(server_host, Config.SMTP_PORT, timeout=5) as server:
+        with smtplib.SMTP(server_host, Config.SMTP_PORT, timeout=2.5) as server:
             if Config.SMTP_USE_TLS:
                 server.starttls()
             if Config.SMTP_USERNAME and Config.SMTP_PASSWORD:
