@@ -1,5 +1,6 @@
 import logging
 import smtplib
+import threading
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional
@@ -50,7 +51,7 @@ def send_email(
         if html_content:
             msg.attach(MIMEText(html_content, "html"))
 
-        with smtplib.SMTP(server_host, Config.SMTP_PORT, timeout=10) as server:
+        with smtplib.SMTP(server_host, Config.SMTP_PORT, timeout=5) as server:
             if Config.SMTP_USE_TLS:
                 server.starttls()
             if Config.SMTP_USERNAME and Config.SMTP_PASSWORD:
@@ -106,8 +107,8 @@ def send_otp_email(to_email: str, otp_code: str, emp_name: str = "Employee") -> 
 
 
 def send_request_outcome_email(to_email: str, req_id: str, outcome: str, remark: str = "") -> bool:
-    """Send guest house approval/rejection outcome notification."""
-    subject = f"Docket - Guest House Request {req_id} {outcome.capitalize()}"
+    """Send request approval/rejection outcome notification."""
+    subject = f"Docket - Process Request {req_id} {outcome.capitalize()}"
     status_color = "#16a34a" if outcome.lower() == "approved" else "#dc2626"
 
     html_content = f"""
@@ -123,7 +124,7 @@ def send_request_outcome_email(to_email: str, req_id: str, outcome: str, remark:
     </head>
     <body>
         <div class="card">
-            <h3>Guest House Request Update</h3>
+            <h3>Process Request Update</h3>
             <p>Request <strong>{req_id}</strong> has been:</p>
             <p><span class="badge">{outcome}</span></p>
             {f"<p><strong>Remarks:</strong> {remark}</p>" if remark else ""}
@@ -132,5 +133,11 @@ def send_request_outcome_email(to_email: str, req_id: str, outcome: str, remark:
     </body>
     </html>
     """
-    text_content = f"Your guest house request {req_id} was {outcome}. {f'Remarks: {remark}' if remark else ''}"
+    text_content = f"Your request {req_id} was {outcome}. {f'Remarks: {remark}' if remark else ''}"
     return send_email(to_email, subject, html_content, text_content)
+
+
+def send_request_outcome_email_async(to_email: str, req_id: str, outcome: str, remark: str = "") -> None:
+    """Send outcome email asynchronously in a background thread to prevent UI latency."""
+    t = threading.Thread(target=send_request_outcome_email, args=(to_email, req_id, outcome, remark), daemon=True)
+    t.start()

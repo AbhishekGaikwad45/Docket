@@ -32,17 +32,29 @@
            {% if active=='admin' %}aria-current="page"{% endif %}>
           <span class="nav-dot"></span>User Management
         </a>
+        <a class="nav-item {% if active=='admin_approvals' %}active{% endif %}"
+           href="{{ url_for('admin_approvals') }}"
+           {% if active=='admin_approvals' %}aria-current="page"{% endif %}>
+          <span class="nav-dot"></span>Process Approvals
+        </a>
         <a class="nav-item {% if active=='approvals_mgmt' %}active{% endif %}"
            href="{{ url_for('approval_management') }}"
            {% if active=='approvals_mgmt' %}aria-current="page"{% endif %}>
-          <span class="nav-dot"></span>Approval Management
+          <span class="nav-dot"></span>Workflow Designer
         </a>
       {% else %}
         <a class="nav-item {% if active=='dashboard' %}active{% endif %}"
            href="{{ url_for('dashboard') }}"
            {% if active=='dashboard' %}aria-current="page"{% endif %}>
-          <span class="nav-dot"></span>Dashboard
+          <span class="nav-dot"></span>Requests &amp; Forms
         </a>
+        {% if session.get('role') in ['dept_head', 'unit_head'] %}
+        <a class="nav-item {% if active=='approvals' %}active{% endif %}"
+           href="{{ url_for('approvals') }}"
+           {% if active=='approvals' %}aria-current="page"{% endif %}>
+          <span class="nav-dot"></span>My Approvals
+        </a>
+        {% endif %}
       {% endif %}
     </nav>
   </aside>

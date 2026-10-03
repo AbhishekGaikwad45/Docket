@@ -235,6 +235,84 @@ class ApprovalStepApprover(Base):
         return f"<ApprovalStepApprover id={self.id} step_id={self.step_id} emp_id='{self.employee_id}'>"
 
 
+class ApprovalRequest(Base):
+    __tablename__ = "approval_requests"
+
+    id = Column(String(50), primary_key=True)
+    workflow_id = Column(Integer, ForeignKey("approval_workflows.id", ondelete="SET NULL"), nullable=True, index=True)
+    request_type = Column(String(100), nullable=False)
+    title = Column(String(255), nullable=False)
+    department = Column(String(150), nullable=True)
+    applicant_emp_id = Column(String(50), ForeignKey("employees.employee_id", ondelete="SET NULL"), nullable=True, index=True)
+    applicant_name = Column(String(255), nullable=True)
+    applicant_email = Column(String(150), nullable=True)
+    applicant_phone = Column(String(50), nullable=True)
+    start_date = Column(String(50), nullable=True)
+    end_date = Column(String(50), nullable=True)
+    purpose = Column(Text, nullable=True)
+    details = Column(Text, nullable=True)
+    status = Column(String(50), default="pending", nullable=False, index=True)
+    current_stage = Column(String(150), default="Department Head Review", nullable=False)
+    current_step_order = Column(Integer, default=1, nullable=False)
+    total_steps = Column(Integer, default=3, nullable=False)
+    remarks = Column(Text, nullable=True)
+    action_by = Column(String(100), nullable=True)
+    action_at = Column(DateTime, nullable=True)
+    approval_history = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    workflow = relationship("ApprovalWorkflow", lazy="joined")
+    applicant = relationship("Employee", lazy="joined")
+
+    def to_dict(self):
+        import json
+        details_obj = {}
+        if self.details:
+            try:
+                details_obj = json.loads(self.details)
+            except Exception:
+                details_obj = {"raw": self.details}
+
+        history_obj = []
+        if self.approval_history:
+            try:
+                history_obj = json.loads(self.approval_history)
+            except Exception:
+                history_obj = []
+
+        return {
+            "id": self.id,
+            "workflow_id": self.workflow_id,
+            "workflow_name": self.workflow.name if self.workflow else self.request_type,
+            "request_type": self.request_type,
+            "title": self.title,
+            "department": self.department or (self.applicant.department if self.applicant else ""),
+            "applicant_emp_id": self.applicant_emp_id,
+            "applicant_name": self.applicant_name or (self.applicant.employee_name if self.applicant else self.applicant_emp_id),
+            "applicant_email": self.applicant_email or (self.applicant.email_id if self.applicant else ""),
+            "applicant_phone": self.applicant_phone or (self.applicant.contact_no if self.applicant else ""),
+            "start_date": self.start_date or "",
+            "end_date": self.end_date or "",
+            "purpose": self.purpose or "",
+            "details": details_obj,
+            "status": self.status,
+            "current_stage": self.current_stage,
+            "current_step_order": self.current_step_order,
+            "total_steps": self.total_steps,
+            "remarks": self.remarks or "",
+            "action_by": self.action_by or "",
+            "action_at": self.action_at.strftime("%Y-%m-%d %H:%M") if self.action_at else None,
+            "approval_history": history_obj,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M") if self.created_at else None,
+            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M") if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f"<ApprovalRequest id={self.id} type='{self.request_type}' status='{self.status}'>"
+
+
 __all__ = [
     "Base",
     "User",
@@ -243,4 +321,5 @@ __all__ = [
     "ApprovalWorkflow",
     "ApprovalWorkflowStep",
     "ApprovalStepApprover",
+    "ApprovalRequest",
 ]

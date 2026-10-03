@@ -5,9 +5,17 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 
 from config import Config
 from database import SessionLocal, close_db_session, init_db_defaults
-from modules.models import User, Employee, GuestHouseRequest, ApprovalWorkflow, ApprovalWorkflowStep, ApprovalStepApprover
+from modules.models import (
+    User,
+    Employee,
+    GuestHouseRequest,
+    ApprovalWorkflow,
+    ApprovalWorkflowStep,
+    ApprovalStepApprover,
+    ApprovalRequest,
+)
 from sync_service import sync_employees
-from mail_service import send_otp_email, send_request_outcome_email
+from mail_service import send_otp_email, send_request_outcome_email, send_request_outcome_email_async
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -218,9 +226,45 @@ def set_role():
 # ---------------------------------------------------------------------------
 @app.route("/dashboard")
 def dashboard():
-    if session.get("is_admin"):
-        return redirect(url_for("admin_module"))
-    return render_template("dashboard.html")
+    emp_id = session.get("emp_id")
+    db = SessionLocal()
+    try:
+        user_info = {}
+        if emp_id:
+            emp = db.query(Employee).filter(Employee.employee_id == emp_id).first()
+            if emp:
+                user_info = emp.to_dict()
+
+        # Query this employee's requests
+        req_records = (
+            db.query(ApprovalRequest)
+            .filter(ApprovalRequest.applicant_emp_id == emp_id)
+            .order_by(ApprovalRequest.created_at.desc())
+            .all()
+        )
+        my_requests = [r.to_dict() for r in req_records]
+
+        # Active workflows for the form dropdown
+        wfs = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.is_active == True).order_by(ApprovalWorkflow.name).all()
+        workflows = [w.to_dict() for w in wfs]
+
+        total_count = len(my_requests)
+        pending_count = sum(1 for r in my_requests if r["status"] == "pending")
+        approved_count = sum(1 for r in my_requests if r["status"] == "approved")
+        rejected_count = sum(1 for r in my_requests if r["status"] == "rejected")
+
+        return render_template(
+            "dashboard.html",
+            user_info=user_info,
+            requests=my_requests,
+            workflows=workflows,
+            total_count=total_count,
+            pending_count=pending_count,
+            approved_count=approved_count,
+            rejected_count=rejected_count,
+        )
+    finally:
+        db.close()
 
 
 @app.route("/department/<name>")
@@ -278,6 +322,7 @@ def render_admin_module(sync_result=None, sync_records=None, selected_source="bo
                 manual_count += 1
 
         departments = sorted(list(departments_set))
+        pending_approvals_count = db.query(ApprovalRequest).filter(ApprovalRequest.status == "pending").count()
 
         return render_template(
             "admin.html",
@@ -292,6 +337,7 @@ def render_admin_module(sync_result=None, sync_records=None, selected_source="bo
             staff_count=staff_count,
             associates_count=associates_count,
             manual_count=manual_count,
+            pending_approvals_count=pending_approvals_count,
         )
     finally:
         db.close()
@@ -760,11 +806,13 @@ def approval_management():
                 "email_id": emp.email_id or "",
                 "source_type": emp.source_type,
             })
+        pending_approvals_count = db.query(ApprovalRequest).filter(ApprovalRequest.status == "pending").count()
         return render_template(
             "approval_management.html",
             active="approvals_mgmt",
             workflows=workflows_data,
             employees=employees_data,
+            pending_approvals_count=pending_approvals_count,
         )
     finally:
         db.close()
@@ -1203,13 +1251,320 @@ def get_department_hierarchy():
 
 
 # ---------------------------------------------------------------------------
-# Approvals
+# Admin Process Approvals Management Module (New Tab)
+# ---------------------------------------------------------------------------
+@app.route("/admin/approvals", methods=["GET"])
+@require_admin
+def admin_approvals():
+    db = SessionLocal()
+    try:
+        requests_query = (
+            db.query(ApprovalRequest)
+            .order_by(ApprovalRequest.created_at.desc())
+            .all()
+        )
+        all_requests = [r.to_dict() for r in requests_query]
+
+        # Distinct departments for filtering
+        dept_rows = (
+            db.query(Employee.department)
+            .distinct()
+            .filter(Employee.department != None)
+            .all()
+        )
+        departments = sorted([d[0] for d in dept_rows if d[0]])
+
+        # Active workflows
+        workflows = (
+            db.query(ApprovalWorkflow)
+            .filter(ApprovalWorkflow.is_active == True)
+            .order_by(ApprovalWorkflow.name)
+            .all()
+        )
+        workflows_data = [w.to_dict() for w in workflows]
+
+        employee_count = db.query(Employee).count()
+        pending_count = sum(1 for r in all_requests if r["status"] == "pending")
+        approved_count = sum(1 for r in all_requests if r["status"] == "approved")
+        rejected_count = sum(1 for r in all_requests if r["status"] == "rejected")
+        total_count = len(all_requests)
+
+        return render_template(
+            "admin_approvals.html",
+            active="admin_approvals",
+            requests=all_requests,
+            departments=departments,
+            workflows=workflows_data,
+            employee_count=employee_count,
+            pending_count=pending_count,
+            approved_count=approved_count,
+            rejected_count=rejected_count,
+            total_count=total_count,
+            pending_approvals_count=pending_count,
+        )
+    finally:
+        db.close()
+
+
+@app.route("/admin/approvals/<req_id>/decide", methods=["POST"])
+@require_admin
+def decide_admin_approval(req_id):
+    import json as _json
+    payload = request.get_json(silent=True) or request.form
+    decision = (payload.get("decision") or "").strip().lower()
+    remarks = (payload.get("remarks") or "").strip()
+    advance_mode = (payload.get("advance_mode") or "final_approval").strip()
+
+    db = SessionLocal()
+    try:
+        req_item = db.query(ApprovalRequest).filter(ApprovalRequest.id == req_id).first()
+        if not req_item:
+            return jsonify({"success": False, "message": "Request not found"}), 404
+
+        actor_name = f"Admin ({session.get('emp_name') or session.get('emp_id') or 'Administrator'})"
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+
+        # Parse history
+        history = []
+        if req_item.approval_history:
+            try:
+                history = _json.loads(req_item.approval_history)
+            except Exception:
+                history = []
+
+        if decision == "reject":
+            if not remarks:
+                return jsonify({"success": False, "message": "Rejection reason is required."}), 400
+
+            req_item.status = "rejected"
+            req_item.remarks = remarks
+            req_item.action_by = actor_name
+            req_item.action_at = datetime.utcnow()
+
+            history.append({
+                "stage": req_item.current_stage,
+                "action": "rejected",
+                "actor": actor_name,
+                "timestamp": now_str,
+                "remarks": remarks,
+            })
+            req_item.approval_history = _json.dumps(history)
+
+            # Sync to GuestHouseRequest if exists
+            gh = db.query(GuestHouseRequest).filter(GuestHouseRequest.id == req_id).first()
+            if gh:
+                gh.stage = "rejected"
+                gh.remark = remarks
+                gh.rejected_at = "admin"
+
+            db.commit()
+
+            # Email notification (non-blocking)
+            if req_item.applicant_email:
+                send_request_outcome_email_async(req_item.applicant_email, req_item.id, "rejected", remarks)
+
+            return jsonify({"success": True, "message": f"Request {req_id} rejected.", "request": req_item.to_dict()})
+
+        elif decision == "approve":
+            # Check advance stage vs final approval
+            if advance_mode == "next_stage" and req_item.current_step_order < req_item.total_steps:
+                old_stage = req_item.current_stage
+                req_item.current_step_order += 1
+                if req_item.workflow_id:
+                    wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == req_item.workflow_id).first()
+                    if wf and wf.steps:
+                        next_step = next((s for s in wf.steps if s.step_order == req_item.current_step_order), None)
+                        if next_step:
+                            req_item.current_stage = next_step.step_name
+                        else:
+                            req_item.current_stage = f"Stage {req_item.current_step_order} Review"
+                else:
+                    req_item.current_stage = f"Stage {req_item.current_step_order} Review"
+
+                history.append({
+                    "stage": old_stage,
+                    "action": "approved",
+                    "actor": actor_name,
+                    "timestamp": now_str,
+                    "remarks": remarks or f"Approved stage {req_item.current_step_order - 1} and advanced to {req_item.current_stage}",
+                })
+                req_item.approval_history = _json.dumps(history)
+                db.commit()
+                return jsonify({"success": True, "message": f"Advanced {req_id} to {req_item.current_stage}.", "request": req_item.to_dict()})
+            else:
+                req_item.status = "approved"
+                req_item.remarks = remarks or "Approved by Administrator"
+                req_item.action_by = actor_name
+                req_item.action_at = datetime.utcnow()
+
+                history.append({
+                    "stage": req_item.current_stage,
+                    "action": "approved",
+                    "actor": actor_name,
+                    "timestamp": now_str,
+                    "remarks": remarks or "Granted Final Approval",
+                })
+                req_item.approval_history = _json.dumps(history)
+
+                # Sync to GuestHouseRequest if exists
+                gh = db.query(GuestHouseRequest).filter(GuestHouseRequest.id == req_id).first()
+                if gh:
+                    gh.stage = "approved"
+                    gh.remark = remarks
+
+                db.commit()
+
+                # Email notification (non-blocking)
+                if req_item.applicant_email:
+                    send_request_outcome_email_async(req_item.applicant_email, req_item.id, "approved", remarks or "Approved by Administrator")
+
+                return jsonify({"success": True, "message": f"Request {req_id} approved successfully.", "request": req_item.to_dict()})
+
+        else:
+            return jsonify({"success": False, "message": "Invalid decision."}), 400
+
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# User Service & Request Form Submission (Stored via Alembic in Postgres)
+# ---------------------------------------------------------------------------
+@app.route("/requests/submit", methods=["POST"])
+def submit_request():
+    import json as _json
+    payload = request.get_json(silent=True) or request.form
+    workflow_id = payload.get("workflow_id")
+    request_type = (payload.get("request_type") or "General Request").strip()
+    title = (payload.get("title") or "").strip()
+    start_date = (payload.get("start_date") or "").strip()
+    end_date = (payload.get("end_date") or "").strip()
+    purpose = (payload.get("purpose") or "").strip()
+    details_data = payload.get("details") or {}
+    if isinstance(details_data, str):
+        try:
+            details_data = _json.loads(details_data)
+        except Exception:
+            details_data = {"notes": details_data}
+
+    if not title or not start_date or not end_date:
+        return jsonify({"success": False, "message": "Request title and both schedule dates are required."}), 400
+
+    db = SessionLocal()
+    try:
+        emp_id = session.get("emp_id")
+        applicant = db.query(Employee).filter(Employee.employee_id == emp_id).first() if emp_id else None
+        applicant_name = applicant.employee_name if applicant else session.get("emp_name", emp_id)
+        applicant_email = applicant.email_id if applicant else None
+        applicant_phone = applicant.contact_no if applicant else None
+        department = applicant.department if applicant else None
+
+        # Sequential human-readable Request ID
+        count = db.query(ApprovalRequest).count()
+        req_id = f"REQ-{datetime.utcnow().year}-{1001 + count}"
+
+        # Workflow lookup
+        current_stage = "Department Review"
+        total_steps = 3
+        wf = None
+        if workflow_id:
+            try:
+                wf = db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == int(workflow_id)).first()
+                if wf and wf.steps:
+                    total_steps = len(wf.steps)
+                    first_step = min(wf.steps, key=lambda s: s.step_order)
+                    current_stage = first_step.step_name
+            except Exception:
+                pass
+
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+        history = [
+            {
+                "stage": "Request Submission",
+                "action": "submitted",
+                "actor": applicant_name or emp_id or "Applicant",
+                "timestamp": now_str,
+                "remarks": f"Submitted {request_type} form",
+            }
+        ]
+
+        applicant_emp_id = applicant.employee_id if applicant else None
+
+        new_req = ApprovalRequest(
+            id=req_id,
+            workflow_id=wf.id if wf else None,
+            request_type=request_type,
+            title=title,
+            department=department,
+            applicant_emp_id=applicant_emp_id,
+            applicant_name=applicant_name,
+            applicant_email=applicant_email,
+            applicant_phone=applicant_phone,
+            start_date=start_date,
+            end_date=end_date,
+            purpose=purpose,
+            details=_json.dumps(details_data),
+            status="pending",
+            current_stage=current_stage,
+            current_step_order=1,
+            total_steps=total_steps,
+            approval_history=_json.dumps(history),
+        )
+        db.add(new_req)
+
+        # Synchronize with guest_house_requests if applicable
+        if "guest" in request_type.lower():
+            gh_req = GuestHouseRequest(
+                id=req_id,
+                guest=title,
+                checkin=start_date,
+                checkout=end_date,
+                purpose=purpose,
+                stage="pending_dept_head",
+                remark="",
+                rejected_at=None,
+                created_by=applicant_emp_id,
+            )
+            db.add(gh_req)
+
+        db.commit()
+        db.refresh(new_req)
+
+        return jsonify({
+            "success": True,
+            "message": f"Request {req_id} submitted successfully.",
+            "request_id": req_id,
+            "request": new_req.to_dict(),
+        })
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        db.close()
+
+
+@app.route("/requests/<req_id>/json", methods=["GET"])
+def get_request_json(req_id):
+    db = SessionLocal()
+    try:
+        req_item = db.query(ApprovalRequest).filter(ApprovalRequest.id == req_id).first()
+        if not req_item:
+            return jsonify({"success": False, "message": "Request not found"}), 404
+        return jsonify({"success": True, "request": req_item.to_dict()})
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Approvals (Department / Role-Based Reviewers)
 # ---------------------------------------------------------------------------
 @app.route("/approvals")
-
 def approvals():
     if session.get("is_admin"):
-        return redirect(url_for("admin_module"))
+        return redirect(url_for("admin_approvals"))
     role = session.get("role", "employee")
     stage_for_role = {
         "dept_head": "pending_dept_head",
@@ -1242,32 +1597,48 @@ def decide(req_id):
     db = SessionLocal()
     try:
         r = db.query(GuestHouseRequest).filter(GuestHouseRequest.id == req_id).first()
-        if not r:
-            return redirect(url_for("approvals"))
+        req_obj = db.query(ApprovalRequest).filter(ApprovalRequest.id == req_id).first()
 
         submitter_email = None
-        if r.created_by:
+        if r and r.created_by:
             submitter = db.query(Employee).filter(Employee.employee_id == r.created_by).first()
             if submitter:
                 submitter_email = submitter.email_id
+        elif req_obj:
+            submitter_email = req_obj.applicant_email
 
         if decision == "reject":
             if not remark:
                 flash("Add a remark before rejecting.", "error")
                 return redirect(url_for("approvals"))
-            r.stage = "rejected"
-            r.remark = remark
-            r.rejected_at = role
+            if r:
+                r.stage = "rejected"
+                r.remark = remark
+                r.rejected_at = role
+            if req_obj:
+                req_obj.status = "rejected"
+                req_obj.remarks = remark
+                req_obj.action_by = role
+                req_obj.action_at = datetime.utcnow()
             db.commit()
             if submitter_email:
-                send_request_outcome_email(submitter_email, r.id, "rejected", remark)
+                send_request_outcome_email_async(submitter_email, req_id, "rejected", remark)
         elif decision == "approve":
-            if r.stage == "pending_dept_head":
-                r.stage = "pending_unit_head"
-            elif r.stage == "pending_unit_head":
-                r.stage = "approved"
-                if submitter_email:
-                    send_request_outcome_email(submitter_email, r.id, "approved", remark)
+            if r:
+                if r.stage == "pending_dept_head":
+                    r.stage = "pending_unit_head"
+                elif r.stage == "pending_unit_head":
+                    r.stage = "approved"
+                    if submitter_email:
+                        send_request_outcome_email_async(submitter_email, r.id, "approved", remark)
+            if req_obj:
+                if req_obj.current_step_order < req_obj.total_steps:
+                    req_obj.current_step_order += 1
+                    req_obj.current_stage = "Unit Head Review" if role == "dept_head" else "Final Approval"
+                else:
+                    req_obj.status = "approved"
+                    req_obj.action_by = role
+                    req_obj.action_at = datetime.utcnow()
             db.commit()
     except Exception as e:
         db.rollback()

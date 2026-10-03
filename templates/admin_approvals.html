@@ -1,0 +1,853 @@
+{% extends "base.html" %}
+{% block title %}Process Approvals - Admin Portal{% endblock %}
+{% set active = 'admin_approvals' %}
+
+{% block content %}
+<!-- Admin Navigation Tabs -->
+<nav class="admin-nav-tabs" aria-label="Admin Sections">
+  <a href="{{ url_for('admin_module') }}" class="admin-nav-tab">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+    <span>User Management</span>
+    <span class="admin-tab-count">{{ employee_count or 0 }}</span>
+  </a>
+
+  <a href="{{ url_for('admin_approvals') }}" class="admin-nav-tab active">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 11 12 14 22 4"></polyline>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+    </svg>
+    <span>Process Approvals</span>
+    {% if pending_count and pending_count > 0 %}
+      <span class="admin-tab-badge badge-attention">{{ pending_count }} Pending</span>
+    {% else %}
+      <span class="admin-tab-badge">0 Pending</span>
+    {% endif %}
+  </a>
+
+  <a href="{{ url_for('approval_management') }}" class="admin-nav-tab">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="3" y1="9" x2="21" y2="9"></line>
+      <line x1="9" y1="21" x2="9" y2="9"></line>
+    </svg>
+    <span>Workflow Designer</span>
+  </a>
+</nav>
+
+<!-- Page Header -->
+<div class="user-mgmt-header-row">
+  <div>
+    <h1 class="page-title">Process Approvals &amp; Request Management</h1>
+    <p class="page-sub" style="margin-bottom:0;">
+      Review employee submissions across all workflows, advance multi-stage hierarchy reviews, or grant final approvals.
+    </p>
+  </div>
+  <div class="table-actions">
+    <button class="btn-primary-action" type="button" id="btn-admin-new-request">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      New Request
+    </button>
+  </div>
+</div>
+
+<!-- KPI Summary Cards -->
+<div class="approval-kpi-grid">
+  <div class="approval-kpi-card pending">
+    <div class="kpi-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+    </div>
+    <div class="kpi-info">
+      <span class="kpi-number">{{ pending_count }}</span>
+      <span class="kpi-label">Pending Approvals</span>
+    </div>
+  </div>
+
+  <div class="approval-kpi-card approved">
+    <div class="kpi-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+    </div>
+    <div class="kpi-info">
+      <span class="kpi-number">{{ approved_count }}</span>
+      <span class="kpi-label">Approved Requests</span>
+    </div>
+  </div>
+
+  <div class="approval-kpi-card rejected">
+    <div class="kpi-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>
+    </div>
+    <div class="kpi-info">
+      <span class="kpi-number">{{ rejected_count }}</span>
+      <span class="kpi-label">Rejected Requests</span>
+    </div>
+  </div>
+
+  <div class="approval-kpi-card total">
+    <div class="kpi-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+        <line x1="8" y1="21" x2="16" y2="21"></line>
+        <line x1="12" y1="17" x2="12" y2="21"></line>
+      </svg>
+    </div>
+    <div class="kpi-info">
+      <span class="kpi-number">{{ total_count }}</span>
+      <span class="kpi-label">Total Submissions</span>
+    </div>
+  </div>
+</div>
+
+<!-- Toolbar: Search & Filters -->
+<div class="user-mgmt-toolbar">
+  <div class="toolbar-left">
+    <div class="toolbar-search-wrap">
+      <span class="toolbar-search-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+      </span>
+      <label class="visually-hidden" for="approval-search-input">Search requests</label>
+      <input type="search"
+             id="approval-search-input"
+             class="toolbar-search-input"
+             placeholder="Search by ID, applicant, title, department...">
+    </div>
+
+    <label class="visually-hidden" for="status-filter">Status Filter</label>
+    <select id="status-filter" class="toolbar-select">
+      <option value="all">All Statuses ({{ total_count }})</option>
+      <option value="pending" {% if pending_count > 0 %}selected{% endif %}>Pending ({{ pending_count }})</option>
+      <option value="approved">Approved ({{ approved_count }})</option>
+      <option value="rejected">Rejected ({{ rejected_count }})</option>
+    </select>
+
+    <label class="visually-hidden" for="type-filter">Workflow Type</label>
+    <select id="type-filter" class="toolbar-select">
+      <option value="all">All Request Types</option>
+      {% for wf in workflows %}
+      <option value="{{ wf.name|lower }}">{{ wf.name }}</option>
+      {% endfor %}
+      <option value="guest house">Guest House</option>
+      <option value="vip hall">VIP Hall</option>
+    </select>
+
+    <label class="visually-hidden" for="dept-filter">Department</label>
+    <select id="dept-filter" class="toolbar-select">
+      <option value="all">All Departments</option>
+      {% for dept in departments %}
+      <option value="{{ dept|lower }}">{{ dept }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="button" class="btn-secondary-action" id="btn-reset-filters" style="height:40px; font-size:12.5px;">
+      Reset
+    </button>
+  </div>
+
+  <div class="toolbar-right" aria-live="polite">
+    Showing <strong id="displayed-count">{{ requests|length }}</strong> of {{ total_count }} requests
+  </div>
+</div>
+
+<!-- Requests Data Table -->
+<div class="user-table-wrap">
+  <table class="data-table" id="approvals-table">
+    <caption class="visually-hidden">Process Approval Requests</caption>
+    <thead>
+      <tr>
+        <th scope="col">Request ID</th>
+        <th scope="col">Type &amp; Title</th>
+        <th scope="col">Applicant</th>
+        <th scope="col">Department</th>
+        <th scope="col">Schedule</th>
+        <th scope="col">Current Stage</th>
+        <th scope="col">Status</th>
+        <th scope="col">Submitted On</th>
+        <th scope="col" style="text-align:center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="approvals-tbody">
+      {% for req in requests %}
+      <tr class="approval-row"
+          id="row-{{ req.id }}"
+          data-id="{{ req.id|lower }}"
+          data-title="{{ (req.title or '')|lower }}"
+          data-type="{{ (req.request_type or '')|lower }}"
+          data-applicant="{{ (req.applicant_name or '')|lower }} {{ (req.applicant_emp_id or '')|lower }}"
+          data-dept="{{ (req.department or '')|lower }}"
+          data-status="{{ req.status|lower }}"
+          data-json='{{ req|tojson }}'>
+        <td class="cell-id">
+          <strong>{{ req.id }}</strong>
+        </td>
+        <td>
+          <div style="font-weight:700; color:var(--text-strong);">{{ req.title }}</div>
+          <span class="workflow-type-badge">{{ req.request_type }}</span>
+        </td>
+        <td>
+          <div style="font-weight:600;">{{ req.applicant_name or req.applicant_emp_id }}</div>
+          <div style="font-size:11.5px; color:#64748b;">ID: {{ req.applicant_emp_id }}</div>
+        </td>
+        <td>{{ req.department or '—' }}</td>
+        <td>
+          {% if req.start_date or req.end_date %}
+            <div style="font-size:12px; font-weight:600;">{{ req.start_date }} &rarr; {{ req.end_date }}</div>
+          {% else %}
+            <span style="color:#94a3b8;">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="stage-badge">
+            <span class="stage-step-num">{{ req.current_step_order or 1 }}</span>
+            <span>{{ req.current_stage }}</span>
+          </span>
+        </td>
+        <td>
+          {% if req.status == 'approved' %}
+            <span class="status-pill status-approved">Approved</span>
+          {% elif req.status == 'rejected' %}
+            <span class="status-pill status-rejected">Rejected</span>
+          {% else %}
+            <span class="status-pill status-pending">Pending</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px; color:#64748b; white-space:nowrap;">
+          {{ req.created_at or '—' }}
+        </td>
+        <td>
+          <div class="table-actions">
+            {% if req.status == 'pending' %}
+              <button class="btn-action btn-action-approve"
+                      type="button"
+                      data-action="approve"
+                      data-req-id="{{ req.id }}"
+                      title="Approve this stage / grant final approval">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Approve
+              </button>
+              <button class="btn-action btn-action-reject"
+                      type="button"
+                      data-action="reject"
+                      data-req-id="{{ req.id }}"
+                      title="Reject request with remark">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                Reject
+              </button>
+            {% endif %}
+            <button class="btn-action btn-action-view"
+                    type="button"
+                    data-action="view"
+                    data-req-id="{{ req.id }}"
+                    title="View Request Details & Timeline">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              Details
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr id="empty-row">
+        <td colspan="9" style="text-align:center; padding:40px 20px; color:#64748b;">
+          <p style="font-size:15px; font-weight:600; margin:0 0 6px;">No requests found</p>
+          <p style="font-size:13px; margin:0;">When employees submit requests, they will appear here for review.</p>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- =========================================================================
+     MODAL: APPROVE CONFIRMATION & ADVANCE STAGE
+     ========================================================================= -->
+<div class="crud-modal" id="admin-approve-modal" role="dialog" aria-modal="true" aria-labelledby="approve-modal-title">
+  <div class="crud-modal-box">
+    <div class="crud-modal-header">
+      <div>
+        <h2 class="crud-modal-title" id="approve-modal-title">Approve Process Request</h2>
+        <p class="crud-modal-subtitle">Advance this request through the workflow or give final approval.</p>
+      </div>
+      <button class="crud-modal-close" type="button" data-close-modal="admin-approve-modal" aria-label="Close">&times;</button>
+    </div>
+
+    <form id="approve-form">
+      <input type="hidden" id="approve-req-id" name="req_id">
+      <div class="crud-modal-body">
+        <div class="crud-error-msg" id="approve-error"></div>
+
+        <div class="detail-kv-grid" id="approve-summary-box">
+          <div class="detail-kv-item">
+            <span class="detail-kv-label">Request ID</span>
+            <span class="detail-kv-value" id="approve-show-id">—</span>
+          </div>
+          <div class="detail-kv-item">
+            <span class="detail-kv-label">Request Type</span>
+            <span class="detail-kv-value" id="approve-show-type">—</span>
+          </div>
+          <div class="detail-kv-item">
+            <span class="detail-kv-label">Applicant</span>
+            <span class="detail-kv-value" id="approve-show-applicant">—</span>
+          </div>
+          <div class="detail-kv-item">
+            <span class="detail-kv-label">Current Stage</span>
+            <span class="detail-kv-value" id="approve-show-stage" style="color:var(--jsw-blue);">—</span>
+          </div>
+        </div>
+
+        <div class="crud-form-group" style="margin-bottom:14px;">
+          <label class="crud-form-label" for="approve-advance-mode">Approval Action</label>
+          <select class="crud-form-select" id="approve-advance-mode" name="advance_mode">
+            <option value="final_approval">Grant Final Approval (Directly approve entire request)</option>
+            <option value="next_stage">Advance to Next Workflow Stage</option>
+          </select>
+        </div>
+
+        <div class="crud-form-group">
+          <label class="crud-form-label" for="approve-remarks">Approval Remarks / Notes (Optional)</label>
+          <textarea class="crud-form-input" id="approve-remarks" name="remarks" rows="3"
+                    style="height:auto; padding:10px;"
+                    placeholder="Enter approval comments, room/hall assignment, or instructions..."></textarea>
+        </div>
+      </div>
+
+      <div class="crud-modal-footer">
+        <button class="btn-secondary-action" type="button" data-close-modal="admin-approve-modal">Cancel</button>
+        <button class="btn-primary-action" type="submit" id="btn-confirm-approve" style="background:#15803d; border-color:#15803d;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Confirm Approval
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: REJECT CONFIRMATION
+     ========================================================================= -->
+<div class="crud-modal" id="admin-reject-modal" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
+  <div class="crud-modal-box narrow">
+    <div class="crud-modal-header">
+      <div>
+        <h2 class="crud-modal-title" id="reject-modal-title" style="color:var(--danger);">Reject Request</h2>
+        <p class="crud-modal-subtitle">Provide a clear justification to inform the applicant.</p>
+      </div>
+      <button class="crud-modal-close" type="button" data-close-modal="admin-reject-modal" aria-label="Close">&times;</button>
+    </div>
+
+    <form id="reject-form">
+      <input type="hidden" id="reject-req-id" name="req_id">
+      <div class="crud-modal-body">
+        <div class="crud-error-msg" id="reject-error"></div>
+
+        <p style="font-size:13.5px; color:#475569; margin:0 0 14px;">
+          You are rejecting request <strong id="reject-show-id" style="color:var(--text-strong);">—</strong> submitted by <strong id="reject-show-applicant">—</strong>.
+        </p>
+
+        <div class="crud-form-group">
+          <label class="crud-form-label" for="reject-remarks">
+            Rejection Reason / Remarks <span class="required">*</span>
+          </label>
+          <textarea class="crud-form-input" id="reject-remarks" name="remarks" rows="3"
+                    style="height:auto; padding:10px;"
+                    required
+                    placeholder="Provide specific reason for rejection (mandatory)..."></textarea>
+        </div>
+      </div>
+
+      <div class="crud-modal-footer">
+        <button class="btn-secondary-action" type="button" data-close-modal="admin-reject-modal">Cancel</button>
+        <button class="btn-action-delete btn-confirm-delete" type="submit" id="btn-confirm-reject">
+          Confirm Rejection
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: REQUEST DETAILS & WORKFLOW TIMELINE
+     ========================================================================= -->
+<div class="crud-modal" id="request-details-modal" role="dialog" aria-modal="true" aria-labelledby="details-modal-title">
+  <div class="crud-modal-box" style="width:min(720px, 98vw);">
+    <div class="crud-modal-header">
+      <div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <h2 class="crud-modal-title" id="details-modal-title">Request Inspection</h2>
+          <span class="status-pill" id="details-show-status">Status</span>
+        </div>
+        <p class="crud-modal-subtitle" id="details-show-subtitle">Comprehensive request fields and approval timeline.</p>
+      </div>
+      <button class="crud-modal-close" type="button" data-close-modal="request-details-modal" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="crud-modal-body">
+      <!-- Key-Value Breakdown -->
+      <h3 style="font-size:14px; font-weight:800; color:var(--text-strong); margin:0 0 10px; text-transform:uppercase; letter-spacing:.5px;">
+        Application Information
+      </h3>
+      <div class="detail-kv-grid">
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Request ID</span>
+          <span class="detail-kv-value" id="det-id">—</span>
+        </div>
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Request Type</span>
+          <span class="detail-kv-value" id="det-type">—</span>
+        </div>
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Applicant Name</span>
+          <span class="detail-kv-value" id="det-applicant">—</span>
+        </div>
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Employee ID &amp; Dept</span>
+          <span class="detail-kv-value" id="det-emp-info">—</span>
+        </div>
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Title / Subject</span>
+          <span class="detail-kv-value" id="det-title">—</span>
+        </div>
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Schedule Duration</span>
+          <span class="detail-kv-value" id="det-schedule">—</span>
+        </div>
+        <div class="detail-kv-item full-span">
+          <span class="detail-kv-label">Purpose &amp; Justification</span>
+          <span class="detail-kv-value" id="det-purpose" style="font-weight:400; line-height:1.5;">—</span>
+        </div>
+        <div class="detail-kv-item full-span" id="det-extra-container" style="display:none;">
+          <span class="detail-kv-label">Additional Form Data</span>
+          <div id="det-extra-fields" style="font-size:13px; color:#334155; margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <!-- Workflow Timeline Stepper -->
+      <h3 style="font-size:14px; font-weight:800; color:var(--text-strong); margin:18px 0 10px; text-transform:uppercase; letter-spacing:.5px;">
+        Approval Workflow Timeline
+      </h3>
+      <div class="stepper-timeline" id="det-stepper-timeline">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <div class="crud-modal-footer">
+      <button class="btn-secondary-action" type="button" data-close-modal="request-details-modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: SUBMIT REQUEST AS ADMIN
+     ========================================================================= -->
+<div class="crud-modal" id="admin-new-request-modal" role="dialog" aria-modal="true" aria-labelledby="new-req-modal-title">
+  <div class="crud-modal-box">
+    <div class="crud-modal-header">
+      <div>
+        <h2 class="crud-modal-title" id="new-req-modal-title">Submit Request Form</h2>
+        <p class="crud-modal-subtitle">Submit a new request into the PostgreSQL approval pipeline.</p>
+      </div>
+      <button class="crud-modal-close" type="button" data-close-modal="admin-new-request-modal" aria-label="Close">&times;</button>
+    </div>
+
+    <form id="admin-submit-req-form">
+      <div class="crud-modal-body">
+        <div class="crud-error-msg" id="admin-new-error"></div>
+
+        <div class="crud-form-grid">
+          <div class="crud-form-group full-width">
+            <label class="crud-form-label" for="req-workflow">
+              Workflow Process <span class="required">*</span>
+            </label>
+            <select class="crud-form-select" id="req-workflow" name="workflow_id" required>
+              {% for wf in workflows %}
+              <option value="{{ wf.id }}" data-name="{{ wf.name }}">{{ wf.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="crud-form-group full-width">
+            <label class="crud-form-label" for="req-title">
+              Request Title / Guest Name <span class="required">*</span>
+            </label>
+            <input class="crud-form-input" type="text" id="req-title" name="title" required
+                   placeholder="e.g. VIP Guest Accommodation - Mr. Rajesh Sharma">
+          </div>
+
+          <div class="crud-form-group">
+            <label class="crud-form-label" for="req-start-date">Start Date / Check-in <span class="required">*</span></label>
+            <input class="crud-form-input" type="date" id="req-start-date" name="start_date" required>
+          </div>
+
+          <div class="crud-form-group">
+            <label class="crud-form-label" for="req-end-date">End Date / Check-out <span class="required">*</span></label>
+            <input class="crud-form-input" type="date" id="req-end-date" name="end_date" required>
+          </div>
+
+          <div class="crud-form-group">
+            <label class="crud-form-label" for="req-guests">Guests / Attendees</label>
+            <input class="crud-form-input" type="number" id="req-guests" name="num_guests" min="1" value="1">
+          </div>
+
+          <div class="crud-form-group">
+            <label class="crud-form-label" for="req-facility">Facility / Room Type</label>
+            <select class="crud-form-select" id="req-facility" name="facility_type">
+              <option value="Executive Suite">Executive Suite</option>
+              <option value="Deluxe Room">Deluxe Room</option>
+              <option value="VIP Conference Hall">VIP Conference Hall</option>
+              <option value="Twin Sharing">Twin Sharing</option>
+            </select>
+          </div>
+
+          <div class="crud-form-group full-width">
+            <label class="crud-form-label" for="req-purpose">Purpose &amp; Business Justification <span class="required">*</span></label>
+            <textarea class="crud-form-input" id="req-purpose" name="purpose" rows="3" required
+                      style="height:auto; padding:10px;"
+                      placeholder="Explain the purpose of this request, visiting business unit, etc."></textarea>
+          </div>
+
+          <div class="crud-form-group full-width">
+            <label class="crud-form-label" for="req-special">Special Requirements / Notes</label>
+            <input class="crud-form-input" type="text" id="req-special" name="special_instructions"
+                   placeholder="e.g. Food preferences, airport pickup, projector required...">
+          </div>
+        </div>
+      </div>
+
+      <div class="crud-modal-footer">
+        <button class="btn-secondary-action" type="button" data-close-modal="admin-new-request-modal">Cancel</button>
+        <button class="btn-primary-action" type="submit" id="btn-submit-new-req">
+          Submit for Approval
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  'use strict';
+
+  var searchInput = document.getElementById('approval-search-input');
+  var statusFilter = document.getElementById('status-filter');
+  var typeFilter = document.getElementById('type-filter');
+  var deptFilter = document.getElementById('dept-filter');
+  var displayedCount = document.getElementById('displayed-count');
+  var allRows = [];
+
+  function filterRows() {
+    var q = (searchInput.value || '').trim().toLowerCase();
+    var s = statusFilter.value;
+    var t = typeFilter.value;
+    var d = deptFilter.value;
+
+    var visible = 0;
+    allRows.forEach(function(row) {
+      var id = row.dataset.id || '';
+      var title = row.dataset.title || '';
+      var applicant = row.dataset.applicant || '';
+      var dept = row.dataset.dept || '';
+      var rStatus = row.dataset.status || '';
+      var rType = row.dataset.type || '';
+
+      var matchesQuery = !q || id.indexOf(q) !== -1 || title.indexOf(q) !== -1 || applicant.indexOf(q) !== -1 || dept.indexOf(q) !== -1;
+      var matchesStatus = s === 'all' || rStatus === s;
+      var matchesType = t === 'all' || rType.indexOf(t) !== -1;
+      var matchesDept = d === 'all' || dept === d;
+
+      if (matchesQuery && matchesStatus && matchesType && matchesDept) {
+        row.style.display = '';
+        visible++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    displayedCount.textContent = visible;
+  }
+
+  var filterDebounced = window.Portal.debounce(filterRows, 150);
+
+  /* Modal Actions: Approve, Reject, View */
+  function openApproveModal(reqData) {
+    document.getElementById('approve-error').style.display = 'none';
+    document.getElementById('approve-req-id').value = reqData.id;
+    document.getElementById('approve-show-id').textContent = reqData.id;
+    document.getElementById('approve-show-type').textContent = reqData.request_type;
+    document.getElementById('approve-show-applicant').textContent = (reqData.applicant_name || reqData.applicant_emp_id) + ' (' + (reqData.applicant_emp_id || '') + ')';
+    document.getElementById('approve-show-stage').textContent = reqData.current_stage;
+    document.getElementById('approve-remarks').value = '';
+    window.Portal.openModal('admin-approve-modal');
+  }
+
+  function openRejectModal(reqData) {
+    document.getElementById('reject-error').style.display = 'none';
+    document.getElementById('reject-req-id').value = reqData.id;
+    document.getElementById('reject-show-id').textContent = reqData.id;
+    document.getElementById('reject-show-applicant').textContent = reqData.applicant_name || reqData.applicant_emp_id;
+    document.getElementById('reject-remarks').value = '';
+    window.Portal.openModal('admin-reject-modal');
+  }
+
+  function openDetailsModal(reqData) {
+    document.getElementById('det-id').textContent = reqData.id;
+    document.getElementById('det-type').textContent = reqData.request_type;
+    document.getElementById('det-applicant').textContent = reqData.applicant_name || reqData.applicant_emp_id;
+    document.getElementById('det-emp-info').textContent = (reqData.applicant_emp_id || '—') + ' • ' + (reqData.department || 'General');
+    document.getElementById('det-title').textContent = reqData.title;
+    document.getElementById('det-schedule').textContent = (reqData.start_date || '—') + ' to ' + (reqData.end_date || '—');
+    document.getElementById('det-purpose').textContent = reqData.purpose || 'None provided';
+
+    var statusEl = document.getElementById('details-show-status');
+    statusEl.className = 'status-pill status-' + (reqData.status || 'pending');
+    statusEl.textContent = (reqData.status || 'pending').toUpperCase();
+
+    // Extra fields
+    var extraBox = document.getElementById('det-extra-container');
+    var extraFields = document.getElementById('det-extra-fields');
+    if (reqData.details && Object.keys(reqData.details).length > 0) {
+      extraBox.style.display = '';
+      var html = '<ul style="margin:0; padding-left:18px;">';
+      for (var k in reqData.details) {
+        html += '<li><strong>' + k.replace(/_/g, ' ') + ':</strong> ' + reqData.details[k] + '</li>';
+      }
+      html += '</ul>';
+      extraFields.innerHTML = html;
+    } else {
+      extraBox.style.display = 'none';
+    }
+
+    // Workflow Timeline Render
+    var stepper = document.getElementById('det-stepper-timeline');
+    stepper.innerHTML = '';
+
+    var history = reqData.approval_history || [];
+    if (history.length === 0) {
+      history = [
+        { stage: 'Submission', action: 'submitted', actor: reqData.applicant_name || 'Applicant', timestamp: reqData.created_at, remarks: 'Request submitted for review' }
+      ];
+    }
+
+    history.forEach(function(item, idx) {
+      var isCompleted = item.action === 'approved' || item.action === 'submitted';
+      var isRejected = item.action === 'rejected';
+      var nodeClass = isRejected ? 'rejected' : (isCompleted ? 'completed' : 'current');
+
+      var node = document.createElement('div');
+      node.className = 'stepper-node ' + nodeClass;
+      node.innerHTML =
+        '<div class="stepper-marker">' + (idx + 1) + '</div>' +
+        '<div class="stepper-body">' +
+          '<div class="stepper-title-row">' +
+            '<span class="stepper-stage-name">' + (item.stage || 'Review Stage') + ' (' + (item.action || 'Updated').toUpperCase() + ')</span>' +
+            '<span class="stepper-time">' + (item.timestamp || '') + '</span>' +
+          '</div>' +
+          '<div class="stepper-actor">By: <strong>' + (item.actor || 'Approver') + '</strong></div>' +
+          (item.remarks ? '<div class="stepper-remarks">"' + item.remarks + '"</div>' : '') +
+        '</div>';
+      stepper.appendChild(node);
+    });
+
+    // If still pending, show next pending stage
+    if (reqData.status === 'pending') {
+      var pendingNode = document.createElement('div');
+      pendingNode.className = 'stepper-node current';
+      pendingNode.innerHTML =
+        '<div class="stepper-marker">&bull;</div>' +
+        '<div class="stepper-body">' +
+          '<div class="stepper-title-row">' +
+            '<span class="stepper-stage-name">' + reqData.current_stage + '</span>' +
+            '<span class="stepper-time" style="color:#d97706; font-weight:700;">Waiting for Approval</span>' +
+          '</div>' +
+          '<div class="stepper-actor">Assigned Reviewers &amp; Administrators</div>' +
+        '</div>';
+      stepper.appendChild(pendingNode);
+    }
+
+    window.Portal.openModal('request-details-modal');
+  }
+
+  /* Submit Decision (Approve / Reject) */
+  async function submitDecision(reqId, decision, remarks, advanceMode) {
+    var res = await fetch('/admin/approvals/' + encodeURIComponent(reqId) + '/decide', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        decision: decision,
+        remarks: remarks,
+        advance_mode: advanceMode
+      })
+    });
+    var data = await res.json().catch(function() { return {}; });
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || 'Failed to record decision');
+    }
+    return data;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    allRows = Array.prototype.slice.call(document.querySelectorAll('.approval-row'));
+
+    searchInput.addEventListener('input', filterDebounced);
+    [statusFilter, typeFilter, deptFilter].forEach(function(el) {
+      el.addEventListener('change', filterRows);
+    });
+
+    document.getElementById('btn-reset-filters').addEventListener('click', function() {
+      searchInput.value = '';
+      statusFilter.value = 'all';
+      typeFilter.value = 'all';
+      deptFilter.value = 'all';
+      filterRows();
+    });
+
+    document.getElementById('btn-admin-new-request').addEventListener('click', function() {
+      window.Portal.openModal('admin-new-request-modal');
+    });
+
+    // Table action buttons click delegation
+    document.getElementById('approvals-tbody').addEventListener('click', function(e) {
+      var btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      var row = btn.closest('.approval-row');
+      if (!row || !row.dataset.json) return;
+      var reqData = JSON.parse(row.dataset.json);
+
+      var act = btn.dataset.action;
+      if (act === 'approve') openApproveModal(reqData);
+      else if (act === 'reject') openRejectModal(reqData);
+      else if (act === 'view') openDetailsModal(reqData);
+    });
+
+    // Approve Form Submit
+    document.getElementById('approve-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var reqId = document.getElementById('approve-req-id').value;
+      var advanceMode = document.getElementById('approve-advance-mode').value;
+      var remarks = document.getElementById('approve-remarks').value;
+      var submitBtn = document.getElementById('btn-confirm-approve');
+      var errEl = document.getElementById('approve-error');
+
+      submitBtn.disabled = true;
+      errEl.style.display = 'none';
+
+      try {
+        var res = await submitDecision(reqId, 'approve', remarks, advanceMode);
+        window.Portal.closeModal('admin-approve-modal');
+        window.Portal.toast(res.message || 'Request approved successfully!', 'success');
+        window.setTimeout(function() { window.location.reload(); }, 600);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Reject Form Submit
+    document.getElementById('reject-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var reqId = document.getElementById('reject-req-id').value;
+      var remarks = document.getElementById('reject-remarks').value.trim();
+      var submitBtn = document.getElementById('btn-confirm-reject');
+      var errEl = document.getElementById('reject-error');
+
+      if (!remarks) {
+        errEl.textContent = 'Rejection reason is required.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      errEl.style.display = 'none';
+
+      try {
+        var res = await submitDecision(reqId, 'reject', remarks, 'final');
+        window.Portal.closeModal('admin-reject-modal');
+        window.Portal.toast(res.message || 'Request rejected.', 'success');
+        window.setTimeout(function() { window.location.reload(); }, 600);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Admin New Request Submit
+    document.getElementById('admin-submit-req-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var form = e.target;
+      var btn = document.getElementById('btn-submit-new-req');
+      var errEl = document.getElementById('admin-new-error');
+
+      var selectWf = document.getElementById('req-workflow');
+      var wfName = selectWf.options[selectWf.selectedIndex].getAttribute('data-name') || selectWf.options[selectWf.selectedIndex].text;
+
+      var payload = {
+        workflow_id: selectWf.value,
+        request_type: wfName,
+        title: document.getElementById('req-title').value.trim(),
+        start_date: document.getElementById('req-start-date').value,
+        end_date: document.getElementById('req-end-date').value,
+        purpose: document.getElementById('req-purpose').value.trim(),
+        details: {
+          num_guests: document.getElementById('req-guests').value,
+          facility_type: document.getElementById('req-facility').value,
+          special_instructions: document.getElementById('req-special').value.trim()
+        }
+      };
+
+      btn.disabled = true;
+      errEl.style.display = 'none';
+
+      try {
+        var res = await fetch('/requests/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(payload)
+        });
+        var data = await res.json().catch(function() { return {}; });
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'Failed to submit request');
+        }
+        window.Portal.closeModal('admin-new-request-modal');
+        window.Portal.toast(data.message || 'Request submitted successfully!', 'success');
+        window.setTimeout(function() { window.location.reload(); }, 600);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+        btn.disabled = false;
+      }
+    });
+
+    // Close modals on clicking overlay or close buttons
+    document.addEventListener('click', function(e) {
+      var close = e.target.closest('[data-close-modal]');
+      if (close) window.Portal.closeModal(close.dataset.closeModal);
+      if (e.target.classList.contains('crud-modal')) window.Portal.closeModal(e.target.id);
+    });
+
+    // Initial filter apply
+    filterRows();
+  });
+})();
+</script>
+{% endblock %}

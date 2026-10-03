@@ -1,41 +1,606 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Employee Service &amp; Approval Portal{% endblock %}
 {% set active = 'dashboard' %}
 
 {% block content %}
-
-<div class="dashboard-hero">
-  <div class="dashboard-hero-inner">
-    <p class="dashboard-kicker">JSW Dharamtar Port &middot; Employee Services</p>
-    <h1>Welcome to your User Management Portal</h1>
-    <p>
-      Employee records, user accounts and administrative services, in one workspace.
-    </p>
+<!-- Dashboard Hero -->
+<div class="dashboard-hero" style="background:linear-gradient(135deg, #0756b9 0%, #0d3875 100%); color:#fff; border-radius:var(--radius-xl); padding:32px 36px; margin-bottom:28px; box-shadow:0 8px 30px rgba(7,86,185,.2);">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+    <div>
+      <p style="margin:0 0 6px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; opacity:.85; color:#bfdbfe;">
+        JSW Dharamtar Port &middot; Employee Self-Service
+      </p>
+      <h1 style="margin:0 0 8px; font-size:28px; font-weight:800; color:#fff; letter-spacing:-.5px;">
+        Welcome, {{ user_info.employee_name or session.get('emp_name') or session.get('emp_id') }}
+      </h1>
+      <p style="margin:0; font-size:14px; opacity:.9; max-width:600px; color:#e0f2fe; line-height:1.5;">
+        Submit service and facility requests, book Guest House accommodations or VIP halls, and monitor multi-stage approval statuses in real-time.
+      </p>
+      <div style="margin-top:12px; font-size:12.5px; opacity:.8; display:flex; gap:16px;">
+        <span><strong>Emp ID:</strong> {{ session.get('emp_id') }}</span>
+        {% if user_info.department %}
+        <span><strong>Department:</strong> {{ user_info.department }}</span>
+        {% endif %}
+        {% if user_info.designation %}
+        <span><strong>Designation:</strong> {{ user_info.designation }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      <button type="button" class="btn-primary-action" id="btn-open-request-modal"
+              style="background:#fff; color:var(--jsw-blue); padding:12px 22px; font-size:14px; font-weight:800; border:none; box-shadow:0 4px 14px rgba(0,0,0,.15); display:inline-flex; align-items:center; gap:8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Fill New Request Form
+      </button>
+    </div>
   </div>
 </div>
 
+<!-- KPI Summary Cards -->
+<div class="approval-kpi-grid">
+  <div class="approval-kpi-card total">
+    <div class="kpi-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+        <line x1="8" y1="21" x2="16" y2="21"></line>
+        <line x1="12" y1="17" x2="12" y2="21"></line>
+      </svg>
+    </div>
+    <div class="kpi-info">
+      <span class="kpi-number">{{ total_count or 0 }}</span>
+      <span class="kpi-label">My Submissions</span>
+    </div>
+  </div>
+
+  <div class="approval-kpi-card pending">
+    <div class="kpi-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+    </div>
+    <div class="kpi-info">
+      <span class="kpi-number">{{ pending_count or 0 }}</span>
+      <span class="kpi-label">Under Review</span>
+    </div>
+  </div>
+
+  <div class="approval-kpi-card approved">
+    <div class="kpi-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+    </div>
+    <div class="kpi-info">
+      <span class="kpi-number">{{ approved_count or 0 }}</span>
+      <span class="kpi-label">Approved</span>
+    </div>
+  </div>
+
+  <div class="approval-kpi-card rejected">
+    <div class="kpi-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>
+    </div>
+    <div class="kpi-info">
+      <span class="kpi-number">{{ rejected_count or 0 }}</span>
+      <span class="kpi-label">Rejected / Revision</span>
+    </div>
+  </div>
+</div>
+
+<!-- Section Heading -->
 <div class="section-heading">
-  <h2>Departments</h2>
-  <span>Select a department to continue</span>
+  <div>
+    <h2>My Submitted Requests &amp; Approval Status</h2>
+    <span style="font-size:13px; color:#64748b;">Track current review stages, approver remarks, and approval timelines.</span>
+  </div>
+  <div>
+    <button class="btn-primary-action" type="button" id="btn-quick-new-req" style="font-size:13px; padding:8px 16px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      New Request
+    </button>
+  </div>
 </div>
 
-{% if session.get('is_admin') %}
-  <div class="tile-grid">
-    <a class="tile" href="{{ url_for('admin_module') }}">
-      <div class="tile-icon" aria-hidden="true">UM</div>
-      <p class="tile-name">User Management</p>
-      <p class="tile-meta">Users, employee master and Mantra sync</p>
-    </a>
-    <a class="tile" href="{{ url_for('approval_management') }}">
-      <div class="tile-icon tile-icon-alt" aria-hidden="true">AM</div>
-      <p class="tile-name">Approval Management</p>
-      <p class="tile-meta">Workflow designer, hierarchy and approvers</p>
-    </a>
-  </div>
-{% else %}
-  <div class="card">
-    <p class="empty">No departments are open to you yet. Contact an administrator to get access.</p>
-  </div>
-{% endif %}
+<!-- Toolbar: Search & Status Filter -->
+<div class="user-mgmt-toolbar">
+  <div class="toolbar-left">
+    <div class="toolbar-search-wrap">
+      <span class="toolbar-search-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+      </span>
+      <label class="visually-hidden" for="user-search-input">Search my requests</label>
+      <input type="search"
+             id="user-search-input"
+             class="toolbar-search-input"
+             placeholder="Search by Request ID, title, guest, purpose...">
+    </div>
 
+    <!-- Filter Pills -->
+    <div class="status-pills-bar">
+      <button type="button" class="status-pill-btn active" data-filter="all">All ({{ total_count or 0 }})</button>
+      <button type="button" class="status-pill-btn" data-filter="pending">Pending ({{ pending_count or 0 }})</button>
+      <button type="button" class="status-pill-btn" data-filter="approved">Approved ({{ approved_count or 0 }})</button>
+      <button type="button" class="status-pill-btn" data-filter="rejected">Rejected ({{ rejected_count or 0 }})</button>
+    </div>
+  </div>
+
+  <div class="toolbar-right" aria-live="polite">
+    Showing <strong id="user-displayed-count">{{ requests|length }}</strong> requests
+  </div>
+</div>
+
+<!-- Requests Table -->
+<div class="user-table-wrap">
+  <table class="data-table" id="user-requests-table">
+    <caption class="visually-hidden">My Approval Requests</caption>
+    <thead>
+      <tr>
+        <th scope="col">Request ID</th>
+        <th scope="col">Type &amp; Title</th>
+        <th scope="col">Schedule</th>
+        <th scope="col">Current Review Stage</th>
+        <th scope="col">Status</th>
+        <th scope="col">Submitted On</th>
+        <th scope="col" style="text-align:center;">Action</th>
+      </tr>
+    </thead>
+    <tbody id="user-requests-tbody">
+      {% for req in requests %}
+      <tr class="user-req-row"
+          id="row-{{ req.id }}"
+          data-id="{{ req.id|lower }}"
+          data-title="{{ (req.title or '')|lower }}"
+          data-type="{{ (req.request_type or '')|lower }}"
+          data-purpose="{{ (req.purpose or '')|lower }}"
+          data-status="{{ req.status|lower }}"
+          data-json='{{ req|tojson }}'>
+        <td class="cell-id">
+          <strong>{{ req.id }}</strong>
+        </td>
+        <td>
+          <div style="font-weight:700; color:var(--text-strong);">{{ req.title }}</div>
+          <span class="workflow-type-badge">{{ req.request_type }}</span>
+        </td>
+        <td>
+          {% if req.start_date or req.end_date %}
+            <div style="font-size:12.5px; font-weight:600;">{{ req.start_date }} &rarr; {{ req.end_date }}</div>
+          {% else %}
+            <span style="color:#94a3b8;">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="stage-badge">
+            <span class="stage-step-num">{{ req.current_step_order or 1 }}</span>
+            <span>{{ req.current_stage }}</span>
+          </span>
+        </td>
+        <td>
+          {% if req.status == 'approved' %}
+            <span class="status-pill status-approved">Approved</span>
+          {% elif req.status == 'rejected' %}
+            <span class="status-pill status-rejected">Rejected</span>
+          {% else %}
+            <span class="status-pill status-pending">Pending Review</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px; color:#64748b; white-space:nowrap;">
+          {{ req.created_at or '—' }}
+        </td>
+        <td style="text-align:center;">
+          <button class="btn-action btn-action-view"
+                  type="button"
+                  data-action="view-status"
+                  data-req-id="{{ req.id }}"
+                  title="View Approval Status & Stepper Timeline">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+            Track Status
+          </button>
+        </td>
+      </tr>
+      {% else %}
+      <tr id="user-empty-row">
+        <td colspan="7" style="text-align:center; padding:50px 20px; color:#64748b;">
+          <div style="width:48px; height:48px; border-radius:50%; background:#edf6ff; color:var(--jsw-blue); display:grid; place-items:center; margin:0 auto 14px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </div>
+          <p style="font-size:16px; font-weight:700; color:var(--text-strong); margin:0 0 6px;">No requests submitted yet</p>
+          <p style="font-size:13.5px; margin:0 0 16px;">Click the button below to submit a new service or guest house request.</p>
+          <button class="btn-primary-action" type="button" onclick="window.Portal.openModal('user-request-modal');" style="margin:0 auto;">
+            Fill New Request Form
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- =========================================================================
+     MODAL: FILL REQUEST FORM (USER)
+     ========================================================================= -->
+<div class="crud-modal" id="user-request-modal" role="dialog" aria-modal="true" aria-labelledby="form-modal-title">
+  <div class="crud-modal-box">
+    <div class="crud-modal-header">
+      <div>
+        <h2 class="crud-modal-title" id="form-modal-title">Submit Service Request Form</h2>
+        <p class="crud-modal-subtitle">Fill in the details below to initiate the approval process.</p>
+      </div>
+      <button class="crud-modal-close" type="button" data-close-modal="user-request-modal" aria-label="Close">&times;</button>
+    </div>
+
+    <form id="user-req-form">
+      <div class="crud-modal-body">
+        <div class="crud-error-msg" id="user-form-error"></div>
+
+        <div class="crud-form-grid">
+          <!-- Request Category / Workflow -->
+          <div class="crud-form-group full-width">
+            <label class="crud-form-label" for="user-req-workflow">
+              Service / Process Category <span class="required">*</span>
+            </label>
+            <select class="crud-form-select" id="user-req-workflow" name="workflow_id" required>
+              {% for wf in workflows %}
+              <option value="{{ wf.id }}" data-name="{{ wf.name }}">{{ wf.name }} ({{ wf.code }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Applicant Information (Read-only summary) -->
+          <div class="crud-form-group">
+            <label class="crud-form-label">Employee ID</label>
+            <input class="crud-form-input" type="text" value="{{ session.get('emp_id') }}" disabled>
+          </div>
+
+          <div class="crud-form-group">
+            <label class="crud-form-label">Applicant Name</label>
+            <input class="crud-form-input" type="text" value="{{ user_info.employee_name or session.get('emp_name') or session.get('emp_id') }}" disabled>
+          </div>
+
+          <!-- Title / Guest Name -->
+          <div class="crud-form-group full-width">
+            <label class="crud-form-label" for="user-req-title">
+              Request Title / Guest Name <span class="required">*</span>
+            </label>
+            <input class="crud-form-input" type="text" id="user-req-title" name="title" required
+                   placeholder="e.g. VIP Guest Accommodation - Mr. Arun Mehta (Vendor Audit)">
+          </div>
+
+          <!-- Dates -->
+          <div class="crud-form-group">
+            <label class="crud-form-label" for="user-req-start-date">
+              Start Date / Check-in <span class="required">*</span>
+            </label>
+            <input class="crud-form-input" type="date" id="user-req-start-date" name="start_date" required>
+          </div>
+
+          <div class="crud-form-group">
+            <label class="crud-form-label" for="user-req-end-date">
+              End Date / Check-out <span class="required">*</span>
+            </label>
+            <input class="crud-form-input" type="date" id="user-req-end-date" name="end_date" required>
+          </div>
+
+          <!-- Occupancy / Facility Preference -->
+          <div class="crud-form-group">
+            <label class="crud-form-label" for="user-req-guests">Number of Guests / Attendees</label>
+            <input class="crud-form-input" type="number" id="user-req-guests" name="num_guests" min="1" value="1">
+          </div>
+
+          <div class="crud-form-group">
+            <label class="crud-form-label" for="user-req-facility">Facility / Accommodation Type</label>
+            <select class="crud-form-select" id="user-req-facility" name="facility_type">
+              <option value="Executive Suite">Executive Suite</option>
+              <option value="Deluxe Room">Deluxe Room</option>
+              <option value="VIP Conference Hall">VIP Conference Hall</option>
+              <option value="Standard Twin">Standard Twin Sharing</option>
+            </select>
+          </div>
+
+          <!-- Purpose -->
+          <div class="crud-form-group full-width">
+            <label class="crud-form-label" for="user-req-purpose">
+              Business Purpose &amp; Justification <span class="required">*</span>
+            </label>
+            <textarea class="crud-form-input" id="user-req-purpose" name="purpose" rows="3" required
+                      style="height:auto; padding:10px;"
+                      placeholder="Explain the detailed purpose, department requirements, project justification..."></textarea>
+          </div>
+
+          <!-- Special Instructions -->
+          <div class="crud-form-group full-width">
+            <label class="crud-form-label" for="user-req-special">Special Requirements / Notes (Optional)</label>
+            <input class="crud-form-input" type="text" id="user-req-special" name="special_instructions"
+                   placeholder="e.g. Dietary preferences, late check-in, audiovisual equipment...">
+          </div>
+        </div>
+      </div>
+
+      <div class="crud-modal-footer">
+        <button class="btn-secondary-action" type="button" data-close-modal="user-request-modal">Cancel</button>
+        <button class="btn-primary-action" type="submit" id="btn-submit-user-form">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Submit for Approval
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: APPROVAL STATUS & WORKFLOW TIMELINE TRACKER (USER)
+     ========================================================================= -->
+<div class="crud-modal" id="user-timeline-modal" role="dialog" aria-modal="true" aria-labelledby="user-tl-title">
+  <div class="crud-modal-box" style="width:min(700px, 98vw);">
+    <div class="crud-modal-header">
+      <div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <h2 class="crud-modal-title" id="user-tl-title">Approval Status &amp; Timeline</h2>
+          <span class="status-pill" id="user-tl-status-pill">Pending</span>
+        </div>
+        <p class="crud-modal-subtitle">Live multi-stage progress and approver feedback.</p>
+      </div>
+      <button class="crud-modal-close" type="button" data-close-modal="user-timeline-modal" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="crud-modal-body">
+      <!-- Request Summary -->
+      <div class="detail-kv-grid">
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Request ID</span>
+          <span class="detail-kv-value" id="utl-id">—</span>
+        </div>
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Process Category</span>
+          <span class="detail-kv-value" id="utl-type">—</span>
+        </div>
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Request Title</span>
+          <span class="detail-kv-value" id="utl-title">—</span>
+        </div>
+        <div class="detail-kv-item">
+          <span class="detail-kv-label">Schedule Duration</span>
+          <span class="detail-kv-value" id="utl-schedule">—</span>
+        </div>
+        <div class="detail-kv-item full-span">
+          <span class="detail-kv-label">Current Stage</span>
+          <span class="detail-kv-value" id="utl-stage" style="color:var(--jsw-blue);">—</span>
+        </div>
+        <div class="detail-kv-item full-span" id="utl-remarks-box" style="display:none;">
+          <span class="detail-kv-label" style="color:#b45309;">Approver Remarks</span>
+          <span class="detail-kv-value" id="utl-remarks" style="font-weight:400; color:#1e293b;">—</span>
+        </div>
+      </div>
+
+      <!-- Live Stepper -->
+      <h3 style="font-size:14px; font-weight:800; color:var(--text-strong); margin:18px 0 10px; text-transform:uppercase; letter-spacing:.5px;">
+        Workflow Execution Stages
+      </h3>
+      <div class="stepper-timeline" id="utl-stepper-timeline">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <div class="crud-modal-footer">
+      <button class="btn-secondary-action" type="button" data-close-modal="user-timeline-modal">Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  'use strict';
+
+  var searchInput = document.getElementById('user-search-input');
+  var filterButtons = document.querySelectorAll('.status-pill-btn');
+  var displayedCount = document.getElementById('user-displayed-count');
+  var currentFilter = 'all';
+  var allRows = [];
+
+  function filterRows() {
+    var q = (searchInput.value || '').trim().toLowerCase();
+    var visible = 0;
+
+    allRows.forEach(function(row) {
+      var id = row.dataset.id || '';
+      var title = row.dataset.title || '';
+      var purpose = row.dataset.purpose || '';
+      var rType = row.dataset.type || '';
+      var rStatus = row.dataset.status || '';
+
+      var matchesQuery = !q || id.indexOf(q) !== -1 || title.indexOf(q) !== -1 || purpose.indexOf(q) !== -1 || rType.indexOf(q) !== -1;
+      var matchesFilter = currentFilter === 'all' || rStatus === currentFilter;
+
+      if (matchesQuery && matchesFilter) {
+        row.style.display = '';
+        visible++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    displayedCount.textContent = visible;
+  }
+
+  var filterDebounced = window.Portal.debounce(filterRows, 150);
+
+  function openTimelineModal(reqData) {
+    document.getElementById('utl-id').textContent = reqData.id;
+    document.getElementById('utl-type').textContent = reqData.request_type;
+    document.getElementById('utl-title').textContent = reqData.title;
+    document.getElementById('utl-schedule').textContent = (reqData.start_date || '—') + ' to ' + (reqData.end_date || '—');
+    document.getElementById('utl-stage').textContent = reqData.current_stage;
+
+    var statusEl = document.getElementById('user-tl-status-pill');
+    statusEl.className = 'status-pill status-' + (reqData.status || 'pending');
+    statusEl.textContent = (reqData.status || 'pending').toUpperCase();
+
+    var remarksBox = document.getElementById('utl-remarks-box');
+    var remarksEl = document.getElementById('utl-remarks');
+    if (reqData.remarks) {
+      remarksBox.style.display = '';
+      remarksEl.textContent = reqData.remarks;
+    } else {
+      remarksBox.style.display = 'none';
+    }
+
+    var stepper = document.getElementById('utl-stepper-timeline');
+    stepper.innerHTML = '';
+
+    var history = reqData.approval_history || [];
+    if (history.length === 0) {
+      history = [
+        { stage: 'Submission', action: 'submitted', actor: reqData.applicant_name || 'You', timestamp: reqData.created_at, remarks: 'Request submitted for review' }
+      ];
+    }
+
+    history.forEach(function(item, idx) {
+      var isCompleted = item.action === 'approved' || item.action === 'submitted';
+      var isRejected = item.action === 'rejected';
+      var nodeClass = isRejected ? 'rejected' : (isCompleted ? 'completed' : 'current');
+
+      var node = document.createElement('div');
+      node.className = 'stepper-node ' + nodeClass;
+      node.innerHTML =
+        '<div class="stepper-marker">' + (idx + 1) + '</div>' +
+        '<div class="stepper-body">' +
+          '<div class="stepper-title-row">' +
+            '<span class="stepper-stage-name">' + (item.stage || 'Review Stage') + ' (' + (item.action || 'Updated').toUpperCase() + ')</span>' +
+            '<span class="stepper-time">' + (item.timestamp || '') + '</span>' +
+          '</div>' +
+          '<div class="stepper-actor">By: <strong>' + (item.actor || 'Approver') + '</strong></div>' +
+          (item.remarks ? '<div class="stepper-remarks">"' + item.remarks + '"</div>' : '') +
+        '</div>';
+      stepper.appendChild(node);
+    });
+
+    if (reqData.status === 'pending') {
+      var pendingNode = document.createElement('div');
+      pendingNode.className = 'stepper-node current';
+      pendingNode.innerHTML =
+        '<div class="stepper-marker">&bull;</div>' +
+        '<div class="stepper-body">' +
+          '<div class="stepper-title-row">' +
+            '<span class="stepper-stage-name">' + reqData.current_stage + '</span>' +
+            '<span class="stepper-time" style="color:#d97706; font-weight:700;">Awaiting Decision</span>' +
+          '</div>' +
+          '<div class="stepper-actor">Currently under review by authorized departmental approvers.</div>' +
+        '</div>';
+      stepper.appendChild(pendingNode);
+    }
+
+    window.Portal.openModal('user-timeline-modal');
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    allRows = Array.prototype.slice.call(document.querySelectorAll('.user-req-row'));
+
+    searchInput.addEventListener('input', filterDebounced);
+
+    filterButtons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        filterButtons.forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        filterRows();
+      });
+    });
+
+    var openModalBtn = document.getElementById('btn-open-request-modal');
+    if (openModalBtn) {
+      openModalBtn.addEventListener('click', function() {
+        window.Portal.openModal('user-request-modal');
+      });
+    }
+
+    var quickModalBtn = document.getElementById('btn-quick-new-req');
+    if (quickModalBtn) {
+      quickModalBtn.addEventListener('click', function() {
+        window.Portal.openModal('user-request-modal');
+      });
+    }
+
+    // Row track status button click delegation
+    var tbody = document.getElementById('user-requests-tbody');
+    if (tbody) {
+      tbody.addEventListener('click', function(e) {
+        var btn = e.target.closest('button[data-action="view-status"]');
+        if (!btn) return;
+        var row = btn.closest('.user-req-row');
+        if (!row || !row.dataset.json) return;
+        var reqData = JSON.parse(row.dataset.json);
+        openTimelineModal(reqData);
+      });
+    }
+
+    // Submit User Request Form
+    var userForm = document.getElementById('user-req-form');
+    if (userForm) {
+      userForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var btn = document.getElementById('btn-submit-user-form');
+        var errEl = document.getElementById('user-form-error');
+
+        var selectWf = document.getElementById('user-req-workflow');
+        var wfName = selectWf.options[selectWf.selectedIndex].getAttribute('data-name') || selectWf.options[selectWf.selectedIndex].text;
+
+        var payload = {
+          workflow_id: selectWf.value,
+          request_type: wfName,
+          title: document.getElementById('user-req-title').value.trim(),
+          start_date: document.getElementById('user-req-start-date').value,
+          end_date: document.getElementById('user-req-end-date').value,
+          purpose: document.getElementById('user-req-purpose').value.trim(),
+          details: {
+            num_guests: document.getElementById('user-req-guests').value,
+            facility_type: document.getElementById('user-req-facility').value,
+            special_instructions: document.getElementById('user-req-special').value.trim()
+          }
+        };
+
+        btn.disabled = true;
+        errEl.style.display = 'none';
+
+        try {
+          var res = await fetch('/requests/submit', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+          });
+          var data = await res.json().catch(function() { return {}; });
+          if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Failed to submit request');
+          }
+          window.Portal.closeModal('user-request-modal');
+          window.Portal.toast(data.message || 'Request submitted successfully!', 'success');
+          window.setTimeout(function() { window.location.reload(); }, 600);
+        } catch (err) {
+          errEl.textContent = err.message;
+          errEl.style.display = 'block';
+          btn.disabled = false;
+        }
+      });
+    }
+
+    // Modal close delegation
+    document.addEventListener('click', function(e) {
+      var close = e.target.closest('[data-close-modal]');
+      if (close) window.Portal.closeModal(close.dataset.closeModal);
+      if (e.target.classList.contains('crud-modal')) window.Portal.closeModal(e.target.id);
+    });
+
+    filterRows();
+  });
+})();
+</script>
 {% endblock %}
