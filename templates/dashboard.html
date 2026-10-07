@@ -2,6 +2,34 @@
 {% block title %}Employee Service &amp; Approval Portal{% endblock %}
 {% set active = 'dashboard' %}
 
+{% block head %}
+<style>
+  /* Flatpickr: clearly grey out booked / disabled dates */
+  .flatpickr-day.disabled,
+  .flatpickr-day.disabled:hover {
+    background: #f1f5f9 !important;
+    color: #c0c8d4 !important;
+    text-decoration: line-through !important;
+    cursor: not-allowed !important;
+    border-color: transparent !important;
+    pointer-events: none !important;
+  }
+  /* Make the flatpickr input look like our normal inputs */
+  .flatpickr-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 13.5px;
+    color: #1e293b;
+    background: #fff;
+    cursor: pointer;
+  }
+  .flatpickr-input:focus { outline: 2px solid #0756b9; }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Dashboard Hero -->
 <div class="dashboard-hero" style="background:linear-gradient(135deg, #0756b9 0%, #0d3875 100%); color:#fff; border-radius:var(--radius-xl); padding:32px 36px; margin-bottom:28px; box-shadow:0 8px 30px rgba(7,86,185,.2);">
@@ -262,62 +290,35 @@
             <input class="crud-form-input" type="text" value="{{ user_info.employee_name or session.get('emp_name') or session.get('emp_id') }}" disabled>
           </div>
 
-          <!-- Title / Guest Name -->
+          <!-- Department -->
           <div class="crud-form-group full-width">
-            <label class="crud-form-label" for="user-req-title">
-              Request Title / Guest Name <span class="required">*</span>
+            <label class="crud-form-label" for="user-req-department">
+              Department <span class="required">*</span>
             </label>
-            <input class="crud-form-input" type="text" id="user-req-title" name="title" required
-                   placeholder="e.g. VIP Guest Accommodation - Mr. Arun Mehta (Vendor Audit)">
-          </div>
-
-          <!-- Dates -->
-          <div class="crud-form-group">
-            <label class="crud-form-label" for="user-req-start-date">
-              Start Date / Check-in <span class="required">*</span>
-            </label>
-            <input class="crud-form-input" type="date" id="user-req-start-date" name="start_date" required>
-          </div>
-
-          <div class="crud-form-group">
-            <label class="crud-form-label" for="user-req-end-date">
-              End Date / Check-out <span class="required">*</span>
-            </label>
-            <input class="crud-form-input" type="date" id="user-req-end-date" name="end_date" required>
-          </div>
-
-          <!-- Occupancy / Facility Preference -->
-          <div class="crud-form-group">
-            <label class="crud-form-label" for="user-req-guests">Number of Guests / Attendees</label>
-            <input class="crud-form-input" type="number" id="user-req-guests" name="num_guests" min="1" value="1">
-          </div>
-
-          <div class="crud-form-group">
-            <label class="crud-form-label" for="user-req-facility">Facility / Accommodation Type</label>
-            <select class="crud-form-select" id="user-req-facility" name="facility_type">
-              <option value="Executive Suite">Executive Suite</option>
-              <option value="Deluxe Room">Deluxe Room</option>
-              <option value="VIP Conference Hall">VIP Conference Hall</option>
-              <option value="Standard Twin">Standard Twin Sharing</option>
+            {% if user_info.department %}
+            <input class="crud-form-input" type="text" id="user-req-department" name="department" value="{{ user_info.department }}" readonly style="background:#f8fafc; font-weight:600; color:var(--text-main);">
+            {% else %}
+            <select class="crud-form-select" id="user-req-department" name="department" required>
+              <option value="">-- Select Your Department --</option>
+              {% for dept in departments %}
+              <option value="{{ dept }}">{{ dept }}</option>
+              {% endfor %}
             </select>
+            <small style="color:#64748b; font-size:12px; margin-top:4px; display:block;">Please select your official department to ensure routing directly to your Department Head.</small>
+            {% endif %}
           </div>
 
-          <!-- Purpose -->
-          <div class="crud-form-group full-width">
-            <label class="crud-form-label" for="user-req-purpose">
-              Business Purpose &amp; Justification <span class="required">*</span>
-            </label>
-            <textarea class="crud-form-input" id="user-req-purpose" name="purpose" rows="3" required
-                      style="height:auto; padding:10px;"
-                      placeholder="Explain the detailed purpose, department requirements, project justification..."></textarea>
-          </div>
+        </div>
 
-          <!-- Special Instructions -->
-          <div class="crud-form-group full-width">
-            <label class="crud-form-label" for="user-req-special">Special Requirements / Notes (Optional)</label>
-            <input class="crud-form-input" type="text" id="user-req-special" name="special_instructions"
-                   placeholder="e.g. Dietary preferences, late check-in, audiovisual equipment...">
-          </div>
+        <!-- Dynamic Form Title Banner -->
+        <div id="user-dynamic-form-banner" style="display:none; margin:16px 0 12px; padding:12px 16px; background:#eff6ff; border-left:4px solid var(--jsw-blue); border-radius:6px;">
+          <div style="font-weight:700; font-size:13.5px; color:#1e3a8a;" id="user-dynamic-form-title">Service Application Form</div>
+          <div style="font-size:12px; color:#475569; margin-top:2px;" id="user-dynamic-form-desc">Please complete all required fields below.</div>
+        </div>
+
+        <!-- Dynamic Form Fields Grid -->
+        <div class="crud-form-grid" id="user-dynamic-fields-container" style="margin-top:10px;">
+          <!-- Populated dynamically via renderUserFormForWorkflow() -->
         </div>
       </div>
 
@@ -377,6 +378,37 @@
         </div>
       </div>
 
+      <!-- Dynamic Form Submission Details Card -->
+      <div id="utl-form-details-card" style="display:none; margin:16px 0; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">
+          <h4 style="margin:0; font-size:13px; font-weight:800; color:#1e293b; text-transform:uppercase; letter-spacing:.5px;">
+            Submitted Application Details
+          </h4>
+          <span id="utl-form-title-badge" style="font-size:11.5px; font-weight:700; color:#0756b9; background:#eff6ff; padding:2px 8px; border-radius:4px; border:1px solid #bfdbfe;">Custom Form</span>
+        </div>
+        <div class="detail-kv-grid" id="utl-dynamic-fields-list" style="margin-top:6px;">
+          <!-- Dynamically populated from reqData.details -->
+        </div>
+      </div>
+
+      <!-- Allocated Vehicle Details Card (Arranged by DPPL Admin) -->
+      <div id="utl-vehicle-card" style="display:none; margin:16px 0; background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid #bbf7d0; padding-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:18px;">🚗</span>
+            <h4 style="margin:0; font-size:13.5px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:.5px;">
+              Arranged Vehicle &amp; Driver Details
+            </h4>
+          </div>
+          <span style="font-size:11.5px; font-weight:700; color:#047857; background:#dcfce7; padding:2px 8px; border-radius:4px; border:1px solid #86efac;">
+            Dispatched by dppl.admin@jsw.in
+          </span>
+        </div>
+        <div class="detail-kv-grid" id="utl-vehicle-fields-list" style="margin-top:6px;">
+          <!-- Dynamically populated from reqData.details.vehicle_allocation -->
+        </div>
+      </div>
+
       <!-- Live Stepper -->
       <h3 style="font-size:14px; font-weight:800; color:var(--text-strong); margin:18px 0 10px; text-transform:uppercase; letter-spacing:.5px;">
         Workflow Execution Stages
@@ -431,8 +463,186 @@
 
   var filterDebounced = window.Portal.debounce(filterRows, 150);
 
+  var WORKFLOWS = {{ workflows|tojson }};
+
+  function preventPastDateSelection(container) {
+    var now = new Date();
+    var today = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+    container.querySelectorAll('input[type="date"]').forEach(function(input) {
+      if (!input.min || input.min < today) input.min = today;
+    });
+  }
+
+  function renderUserFormForWorkflow(wfId) {
+    var container = document.getElementById('user-dynamic-fields-container');
+    var banner = document.getElementById('user-dynamic-form-banner');
+    var titleEl = document.getElementById('user-dynamic-form-title');
+    var descEl = document.getElementById('user-dynamic-form-desc');
+    if (!container) return;
+
+    var wf = WORKFLOWS.find(function(w) { return String(w.id) === String(wfId); });
+    var schema = wf && wf.form_schema;
+
+    if (schema && schema.enabled && Array.isArray(schema.fields) && schema.fields.length > 0) {
+      if (banner) {
+        banner.style.display = 'block';
+        titleEl.textContent = schema.title || (wf.name + ' Application Form');
+        descEl.textContent = schema.description || 'Please complete all required fields below to initiate the approval process.';
+      }
+
+      container.innerHTML = '';
+      schema.fields.forEach(function(f, idx) {
+        var fKey = f.name || f.id || ('field_' + idx);
+        var fLabel = f.label || fKey;
+        var fType = (f.type || 'text').toLowerCase();
+        var isReq = Boolean(f.required);
+        var widthClass = f.width === 'half' ? 'crud-form-group' : 'crud-form-group full-width';
+
+        var group = document.createElement('div');
+        group.className = widthClass;
+
+        var reqAsterisk = isReq ? ' <span class="required" style="color:var(--danger,#dc2626); font-weight:700;">*</span>' : '';
+        var labelHtml = '<label class="crud-form-label" for="dyn_' + fKey + '">' + fLabel + reqAsterisk + '</label>';
+        var helpHtml = f.help ? '<small style="display:block; font-size:12px; color:#64748b; margin-top:4px;">' + f.help + '</small>' : '';
+
+        var inputHtml = '';
+        if (fType === 'textarea') {
+          inputHtml = '<textarea class="crud-form-input dyn-field-input" id="dyn_' + fKey + '" name="' + fKey + '" rows="3" style="height:auto; padding:10px;" ' +
+                      'data-key="' + fKey + '" data-label="' + fLabel + '" data-type="' + fType + '" ' + (isReq ? 'data-required="true" required ' : '') +
+                      'placeholder="' + (f.placeholder || '') + '"></textarea>';
+        } else if (fType === 'select') {
+          var optList = [];
+          if (Array.isArray(f.options)) {
+            optList = f.options;
+          } else if (typeof f.options === 'string') {
+            optList = f.options.split(/[,\n]/).map(function(s) { return s.trim(); }).filter(Boolean);
+          }
+          inputHtml = '<select class="crud-form-select dyn-field-input" id="dyn_' + fKey + '" name="' + fKey + '" ' +
+                      'data-key="' + fKey + '" data-label="' + fLabel + '" data-type="' + fType + '" ' + (isReq ? 'data-required="true" required ' : '') + '>' +
+                      '<option value="">-- Select ' + fLabel + ' --</option>' +
+                      optList.map(function(opt) {
+                        var val = typeof opt === 'object' ? (opt.value || opt.label) : opt;
+                        var text = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+                        return '<option value="' + val + '">' + text + '</option>';
+                      }).join('') +
+                      '</select>';
+        } else if (fType === 'checkbox') {
+          inputHtml = '<div style="margin-top:6px;"><label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:13.5px; color:var(--text-strong);">' +
+                      '<input type="checkbox" class="dyn-field-input" id="dyn_' + fKey + '" name="' + fKey + '" value="true" ' +
+                      'data-key="' + fKey + '" data-label="' + fLabel + '" data-type="' + fType + '" ' + (isReq ? 'data-required="true" ' : '') + 'style="width:17px; height:17px; cursor:pointer;">' +
+                      '<span>' + fLabel + (isReq ? ' (Required confirmation)' : '') + '</span>' +
+                      '</label></div>';
+          labelHtml = '';
+        } else {
+          var minAttr = (f.min !== undefined && f.min !== null && f.min !== '') ? ' min="' + f.min + '"' : '';
+          var maxAttr = (f.max !== undefined && f.max !== null && f.max !== '') ? ' max="' + f.max + '"' : '';
+          var inputType = ['number', 'date', 'time', 'email', 'tel'].indexOf(fType) !== -1 ? fType : 'text';
+          inputHtml = '<input type="' + inputType + '" class="crud-form-input dyn-field-input" id="dyn_' + fKey + '" name="' + fKey + '" ' +
+                      'data-key="' + fKey + '" data-label="' + fLabel + '" data-type="' + fType + '" ' + (isReq ? 'data-required="true" required ' : '') +
+                      minAttr + maxAttr + ' placeholder="' + (f.placeholder || '') + '">';
+        }
+
+        group.innerHTML = labelHtml + inputHtml + helpHtml;
+        container.appendChild(group);
+      });
+    } else {
+      if (banner) banner.style.display = 'none';
+      container.innerHTML =
+        '<div class="crud-form-group full-width">' +
+          '<label class="crud-form-label" for="dyn_title">Request Title / Subject <span class="required">*</span></label>' +
+          '<input class="crud-form-input dyn-field-input" type="text" id="dyn_title" name="title" data-key="title" data-label="Request Title" data-type="text" data-required="true" required placeholder="e.g. Annual Equipment Maintenance Request">' +
+        '</div>' +
+        '<div class="crud-form-group">' +
+          '<label class="crud-form-label" for="dyn_start_date">Start Date / Check-in <span class="required">*</span></label>' +
+          '<input class="crud-form-input dyn-field-input" type="date" id="dyn_start_date" name="start_date" data-key="start_date" data-label="Start Date" data-type="date" data-required="true" required>' +
+        '</div>' +
+        '<div class="crud-form-group">' +
+          '<label class="crud-form-label" for="dyn_end_date">End Date / Check-out <span class="required">*</span></label>' +
+          '<input class="crud-form-input dyn-field-input" type="date" id="dyn_end_date" name="end_date" data-key="end_date" data-label="End Date" data-type="date" data-required="true" required>' +
+        '</div>' +
+        '<div class="crud-form-group full-width">' +
+          '<label class="crud-form-label" for="dyn_purpose">Business Purpose &amp; Justification <span class="required">*</span></label>' +
+          '<textarea class="crud-form-input dyn-field-input" id="dyn_purpose" name="purpose" data-key="purpose" data-label="Purpose" data-type="textarea" data-required="true" rows="3" required style="height:auto; padding:10px;" placeholder="Explain detailed requirements, business purpose..."></textarea>' +
+        '</div>' +
+        '<div class="crud-form-group full-width">' +
+          '<label class="crud-form-label" for="dyn_special">Special Requirements / Notes (Optional)</label>' +
+          '<input class="crud-form-input dyn-field-input" type="text" id="dyn_special" name="special_instructions" data-key="special_instructions" data-label="Special Instructions" data-type="text" placeholder="e.g. Dietary preferences, audiovisual gear...">' +
+        '</div>';
+    }
+    preventPastDateSelection(container);
+    attachBookedDateWatcher(container);
+  }
+
+  /* ── Flatpickr booked-date watcher: greys out fully-booked dates ─────── */
+  var _fpInstances = [];   /* track instances so we can destroy & re-create */
+
+  function getWfId() {
+    var el = document.getElementById('user-req-workflow');
+    return el ? el.value : '';
+  }
+
+  function initFlatpickrOnContainer(container, bookedDates) {
+    /* Destroy any previous instances inside this container */
+    _fpInstances.forEach(function(fp) { try { fp.destroy(); } catch(e) {} });
+    _fpInstances = [];
+
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    container.querySelectorAll('input[type="date"]').forEach(function(inp) {
+      /* Remove any old hint text from previous approach */
+      var oldHint = inp.parentElement.querySelector('.booked-date-hint');
+      if (oldHint) oldHint.remove();
+
+      var fp = flatpickr(inp, {
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        disable: bookedDates,          /* Flatpickr greys these out */
+        disableMobile: false,
+        allowInput: false,
+        onChange: function(selectedDates, dateStr) {
+          /* extra guard — clear error if a valid date is chosen */
+          var errEl = document.getElementById('user-form-error');
+          if (errEl && errEl.textContent.indexOf('already booked') !== -1) {
+            errEl.style.display = 'none';
+          }
+        }
+      });
+      _fpInstances.push(fp);
+    });
+  }
+
+  function attachBookedDateWatcher(container) {
+    var dateInputs = container.querySelectorAll('input[type="date"]');
+    if (!dateInputs.length) return;
+
+    fetch('/api/booked-dates?workflow_id=' + encodeURIComponent(getWfId()))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var booked = (data.booked_dates || data.booked_slots || [])
+          .map(function(d) { return String(d).trim().slice(0, 10); });
+        initFlatpickrOnContainer(container, booked);
+      })
+      .catch(function() { initFlatpickrOnContainer(container, []); });
+  }
+
+  /* Re-init whenever the workflow selector changes */
+  (function() {
+    var wfSel = document.getElementById('user-req-workflow');
+    if (wfSel) {
+      wfSel.addEventListener('change', function() {
+        var container = document.getElementById('user-dynamic-fields-container');
+        if (container) attachBookedDateWatcher(container);
+      });
+    }
+  })();
+
+
   function openTimelineModal(reqData) {
     document.getElementById('utl-id').textContent = reqData.id;
+
     document.getElementById('utl-type').textContent = reqData.request_type;
     document.getElementById('utl-title').textContent = reqData.title;
     document.getElementById('utl-schedule').textContent = (reqData.start_date || '—') + ' to ' + (reqData.end_date || '—');
@@ -451,12 +661,81 @@
       remarksBox.style.display = 'none';
     }
 
+    // Dynamic Form Submission Details
+    var formCard = document.getElementById('utl-form-details-card');
+    var formList = document.getElementById('utl-dynamic-fields-list');
+    var formBadge = document.getElementById('utl-form-title-badge');
+    if (formCard && formList) {
+      formList.innerHTML = '';
+      var fieldsRendered = 0;
+      var details = reqData.details || {};
+      if (details.form_fields && Array.isArray(details.form_fields) && details.form_fields.length > 0) {
+        if (details.form_title && formBadge) formBadge.textContent = details.form_title;
+        details.form_fields.forEach(function(f) {
+          var item = document.createElement('div');
+          item.className = 'detail-kv-item';
+          item.innerHTML = '<span class="detail-kv-label">' + (f.label || f.key) + '</span>' +
+                           '<span class="detail-kv-value" style="font-weight:600;">' + (f.value !== '' && f.value !== null && f.value !== undefined ? f.value : '—') + '</span>';
+          formList.appendChild(item);
+          fieldsRendered++;
+        });
+      } else if (details.form_data && typeof details.form_data === 'object' && Object.keys(details.form_data).length > 0) {
+        if (details.form_title && formBadge) formBadge.textContent = details.form_title;
+        for (var k in details.form_data) {
+          var val = details.form_data[k];
+          if (typeof val === 'object') continue;
+          var item = document.createElement('div');
+          item.className = 'detail-kv-item';
+          item.innerHTML = '<span class="detail-kv-label">' + k.replace(/_/g, ' ') + '</span>' +
+                           '<span class="detail-kv-value" style="font-weight:600;">' + (val || '—') + '</span>';
+          formList.appendChild(item);
+          fieldsRendered++;
+        }
+      } else if (details && typeof details === 'object') {
+        for (var k in details) {
+          if (['stages', 'current_stage_role', 'current_approver_name', 'current_approver_id', 'has_dynamic_form', 'form_title'].indexOf(k) !== -1) continue;
+          var val = details[k];
+          if (typeof val === 'object') continue;
+          var item = document.createElement('div');
+          item.className = 'detail-kv-item';
+          item.innerHTML = '<span class="detail-kv-label">' + k.replace(/_/g, ' ') + '</span>' +
+                           '<span class="detail-kv-value" style="font-weight:600;">' + (val || '—') + '</span>';
+          formList.appendChild(item);
+          fieldsRendered++;
+        }
+      }
+      formCard.style.display = fieldsRendered > 0 ? '' : 'none';
+    }
+
+    // Render allocated vehicle details if available
+    var vehCard = document.getElementById('utl-vehicle-card');
+    var vehList = document.getElementById('utl-vehicle-fields-list');
+    if (vehCard && vehList) {
+      vehList.innerHTML = '';
+      var va = reqData.details && reqData.details.vehicle_allocation;
+      if (va && Array.isArray(va.fields) && va.fields.length > 0) {
+        va.fields.forEach(function(f) {
+          var item = document.createElement('div');
+          item.className = 'detail-kv-item';
+          var val = f.value || '—';
+          var isContact = /contact|phone|mobile/i.test(f.label || f.name || '');
+          var valHtml = isContact && val !== '—'
+            ? '<a href="tel:' + val + '" style="color:#0756b9; font-weight:700;">' + val + '</a>'
+            : '<span class="detail-kv-value" style="font-weight:700; color:#0f172a;">' + val + '</span>';
+          item.innerHTML = '<span class="detail-kv-label" style="color:#166534;">' + (f.label || f.name) + '</span>' + valHtml;
+          vehList.appendChild(item);
+        });
+        vehCard.style.display = 'block';
+      } else {
+        vehCard.style.display = 'none';
+      }
+    }
+
     var stepper = document.getElementById('utl-stepper-timeline');
     stepper.innerHTML = '';
 
     var stages = (reqData.details && reqData.details.stages) || [];
     if (stages.length > 0) {
-      // 1. Render Hierarchy Pipeline Stages
       stages.forEach(function(stg) {
         var isCompleted = false;
         var isCurrent = false;
@@ -467,7 +746,7 @@
         } else if (reqData.status === 'rejected') {
           if (stg.order < reqData.current_step_order) isCompleted = true;
           else if (stg.order === reqData.current_step_order) isRejected = true;
-        } else { // pending
+        } else {
           if (stg.order < reqData.current_step_order) isCompleted = true;
           else if (stg.order === reqData.current_step_order) isCurrent = true;
         }
@@ -562,9 +841,19 @@
       });
     });
 
+    var selectWf = document.getElementById('user-req-workflow');
+    if (selectWf) {
+      selectWf.addEventListener('change', function() {
+        renderUserFormForWorkflow(this.value);
+      });
+      // Initial render on load
+      renderUserFormForWorkflow(selectWf.value);
+    }
+
     var openModalBtn = document.getElementById('btn-open-request-modal');
     if (openModalBtn) {
       openModalBtn.addEventListener('click', function() {
+        if (selectWf) renderUserFormForWorkflow(selectWf.value);
         window.Portal.openModal('user-request-modal');
       });
     }
@@ -572,6 +861,7 @@
     var quickModalBtn = document.getElementById('btn-quick-new-req');
     if (quickModalBtn) {
       quickModalBtn.addEventListener('click', function() {
+        if (selectWf) renderUserFormForWorkflow(selectWf.value);
         window.Portal.openModal('user-request-modal');
       });
     }
@@ -600,17 +890,70 @@
         var selectWf = document.getElementById('user-req-workflow');
         var wfName = selectWf.options[selectWf.selectedIndex].getAttribute('data-name') || selectWf.options[selectWf.selectedIndex].text;
 
+        var deptInput = document.getElementById('user-req-department');
+        var deptVal = deptInput ? deptInput.value.trim() : '{{ user_info.department or "" }}';
+        if (!deptVal) {
+          errEl.textContent = 'Please specify or select your Department.';
+          errEl.style.display = 'block';
+          if (deptInput) deptInput.focus();
+          return;
+        }
+
+        // Collect dynamic form fields
+        var container = document.getElementById('user-dynamic-fields-container');
+        var dynInputs = container ? container.querySelectorAll('.dyn-field-input') : [];
+        var formData = {};
+        var validationFailed = false;
+        var firstInvalid = null;
+
+        dynInputs.forEach(function(inp) {
+          var key = inp.dataset.key || inp.name;
+          var label = inp.dataset.label || key;
+          var type = inp.dataset.type || 'text';
+          var isReq = inp.dataset.required === 'true';
+
+          var val = '';
+          if (type === 'checkbox') {
+            val = inp.checked;
+            if (isReq && !val) {
+              validationFailed = true;
+              if (!firstInvalid) firstInvalid = { input: inp, label: label };
+            }
+          } else {
+            val = (inp.value || '').trim();
+            if (isReq && !val) {
+              validationFailed = true;
+              if (!firstInvalid) firstInvalid = { input: inp, label: label };
+            }
+          }
+          formData[key] = val;
+        });
+
+        if (validationFailed && firstInvalid) {
+          errEl.textContent = 'Please fill out required field: ' + firstInvalid.label;
+          errEl.style.display = 'block';
+          firstInvalid.input.focus();
+          return;
+        }
+
+        // Auto-map top-level summary attributes
+        var titleVal = formData.title || formData.guest_name || formData.event_title || formData.subject || formData.item_name || '';
+        var startDateVal = formData.start_date || formData.checkin || formData.check_in || formData.event_date || formData.departure_date || '';
+        var endDateVal = formData.end_date || formData.checkout || formData.check_out || formData.return_date || startDateVal;
+        var purposeVal = formData.purpose || formData.justification || formData.description || formData.agenda || '';
+
         var payload = {
           workflow_id: selectWf.value,
           request_type: wfName,
-          title: document.getElementById('user-req-title').value.trim(),
-          start_date: document.getElementById('user-req-start-date').value,
-          end_date: document.getElementById('user-req-end-date').value,
-          purpose: document.getElementById('user-req-purpose').value.trim(),
+          department: deptVal,
+          title: titleVal,
+          start_date: startDateVal,
+          end_date: endDateVal,
+          purpose: purposeVal,
+          form_data: formData,
           details: {
-            num_guests: document.getElementById('user-req-guests').value,
-            facility_type: document.getElementById('user-req-facility').value,
-            special_instructions: document.getElementById('user-req-special').value.trim()
+            department: deptVal,
+            form_data: formData
           }
         };
 

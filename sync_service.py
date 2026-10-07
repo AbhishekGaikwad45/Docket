@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from config import Config
 from database import SessionLocal
-from modules.models import Employee
+from modules.models import Employee, User
 
 logger = logging.getLogger("employee_sync")
 if not logger.handlers:
@@ -139,7 +139,10 @@ def upsert_employees_to_postgres(records: List[Dict[str, Any]], batch_size: int 
                     "last_synced_at": stmt.excluded.last_synced_at,
                     "updated_at": stmt.excluded.updated_at,
                 },
-                where=(Employee.source_view.is_distinct_from('view_EmployeeMaster_Report_Staff'))
+                where=(
+                    (stmt.excluded.source_view == "view_EmployeeMaster_Report_Staff")
+                    | (Employee.source_view.is_distinct_from("view_EmployeeMaster_Report_Staff"))
+                ),
             )
 
             session.execute(stmt)
@@ -159,6 +162,9 @@ def upsert_employees_to_postgres(records: List[Dict[str, Any]], batch_size: int 
 def sync_employees(include_staff: bool = True, include_associates: bool = False, active_only: bool = False) -> Dict[str, Any]:
     """
     Main entry point for syncing employee data from MS SQL Server to PostgreSQL.
+    When syncing Staff only, non-staff synced records (associates) are cleared from PostgreSQL
+    so that only Staff data is visible across the entire portal.
+    When syncing Staff & Associates, both datasets are fetched and retained.
     """
     start_time = time.time()
     staff_count = 0
@@ -198,6 +204,55 @@ def sync_employees(include_staff: bool = True, include_associates: bool = False,
             logger.error(msg)
             errors.append(msg)
 
+    purged_count = 0
+    # Clean up non-synced source views if a specific source was selected
+    # E.g., if Staff only was selected, purge Associates from PostgreSQL so they do not show up in User Management or Approval Management.
+    # If Associates only was selected, purge Staff.
+    # If both were selected, retain both.
+    # Manual records ('manual_entry') are always preserved.
+    if upserted_count > 0 and len(errors) == 0:
+        session = SessionLocal()
+        try:
+            if include_staff and not include_associates:
+                assoc_emps = session.query(Employee.employee_id).filter(
+                    Employee.source_view == "view_EmployeeMaster_Report_Associates"
+                ).all()
+                assoc_ids = [r[0] for r in assoc_emps]
+                if assoc_ids:
+                    session.query(User).filter(
+                        User.emp_id.in_(assoc_ids),
+                        User.is_admin == False,
+                        User.role != "admin"
+                    ).delete(synchronize_session=False)
+                    purged_count = session.query(Employee).filter(
+                        Employee.source_view == "view_EmployeeMaster_Report_Associates"
+                    ).delete(synchronize_session=False)
+                    session.commit()
+                    logger.info(f"Purged {purged_count} Associate records from PostgreSQL because Staff only was synced.")
+
+            elif include_associates and not include_staff:
+                staff_emps = session.query(Employee.employee_id).filter(
+                    Employee.source_view == "view_EmployeeMaster_Report_Staff"
+                ).all()
+                staff_ids = [r[0] for r in staff_emps]
+                if staff_ids:
+                    session.query(User).filter(
+                        User.emp_id.in_(staff_ids),
+                        User.is_admin == False,
+                        User.role != "admin"
+                    ).delete(synchronize_session=False)
+                    purged_count = session.query(Employee).filter(
+                        Employee.source_view == "view_EmployeeMaster_Report_Staff"
+                    ).delete(synchronize_session=False)
+                    session.commit()
+                    logger.info(f"Purged {purged_count} Staff records from PostgreSQL because Associates only was synced.")
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error purging excluded employee sources: {e}")
+            errors.append(f"Source cleanup error: {e}")
+        finally:
+            session.close()
+
     duration = round(time.time() - start_time, 2)
 
     # Reflect manually maintained emails in the result table too. This matters
@@ -217,12 +272,24 @@ def sync_employees(include_staff: bool = True, include_associates: bool = False,
         finally:
             session.close()
 
+    # Re-sync Approval Management step approvers from workflow flow_data
+    try:
+        from app import sync_workflow_step_approvers_from_flow_data
+        _sync_session = SessionLocal()
+        try:
+            sync_workflow_step_approvers_from_flow_data(_sync_session)
+        finally:
+            _sync_session.close()
+    except Exception:
+        pass
+
     return {
         "success": len(errors) == 0,
         "staff_fetched": staff_count,
         "associates_fetched": associates_count,
         "total_fetched": len(all_records),
         "total_upserted": upserted_count,
+        "purged_count": purged_count,
         "duration_seconds": duration,
         "errors": errors,
         # The admin UI uses these source rows to show the result of this run.

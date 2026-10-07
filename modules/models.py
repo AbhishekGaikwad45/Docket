@@ -142,6 +142,7 @@ class ApprovalWorkflow(Base):
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     flow_data = Column(Text, nullable=True)
+    form_schema = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -153,6 +154,24 @@ class ApprovalWorkflow(Base):
         order_by="ApprovalWorkflowStep.step_order.asc()",
     )
 
+    def get_form_schema(self):
+        import json
+        if self.form_schema:
+            try:
+                data = json.loads(self.form_schema)
+                if isinstance(data, dict):
+                    return data
+            except Exception:
+                pass
+        if self.flow_data:
+            try:
+                fd = json.loads(self.flow_data)
+                if isinstance(fd, dict) and "form_schema" in fd and isinstance(fd["form_schema"], dict):
+                    return fd["form_schema"]
+            except Exception:
+                pass
+        return None
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -161,6 +180,7 @@ class ApprovalWorkflow(Base):
             "description": self.description or "",
             "is_active": self.is_active,
             "flow_data": self.flow_data or "",
+            "form_schema": self.get_form_schema(),
             "steps": [s.to_dict() for s in self.steps],
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M") if self.created_at else None,
             "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M") if self.updated_at else None,

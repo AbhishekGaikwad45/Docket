@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#0756b9">
   <title>{% block title %}User Management Portal{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="icon" href="{{ url_for('static', filename='img/logo31.png') }}">
   {% block head %}{% endblock %}
 </head>
@@ -37,10 +38,23 @@
            {% if active=='admin_approvals' %}aria-current="page"{% endif %}>
           <span class="nav-dot"></span>Process Approvals
         </a>
-        <a class="nav-item {% if active=='approvals_mgmt' %}active{% endif %}"
+        <a class="nav-item {% if active=='admin_vehicles' %}active{% endif %}"
+           href="{{ url_for('admin_vehicle_management') }}"
+           {% if active=='admin_vehicles' %}aria-current="page"{% endif %}>
+          <span class="nav-dot"></span>Vehicle Allocation
+          {% if unallocated_vehicle_count and unallocated_vehicle_count > 0 %}
+            <span style="margin-left:auto; background:#ea580c; color:#fff; font-size:10px; font-weight:800; padding:1px 6px; border-radius:10px;">{{ unallocated_vehicle_count }}</span>
+          {% endif %}
+        </a>
+        <a class="nav-item {% if active=='approvals_mgmt' and request.args.get('mode') != 'form-builder' %}active{% endif %}"
            href="{{ url_for('approval_management') }}"
-           {% if active=='approvals_mgmt' %}aria-current="page"{% endif %}>
-          <span class="nav-dot"></span>Workflow Designer
+           {% if active=='approvals_mgmt' and request.args.get('mode') != 'form-builder' %}aria-current="page"{% endif %}>
+          <span class="nav-dot"></span>Approval Pipeline
+        </a>
+        <a class="nav-item {% if active=='approvals_mgmt' and request.args.get('mode') == 'form-builder' %}active{% endif %}"
+           href="{{ url_for('approval_management') }}?mode=form-builder"
+           {% if active=='approvals_mgmt' and request.args.get('mode') == 'form-builder' %}aria-current="page"{% endif %}>
+          <span class="nav-dot"></span>Dynamic Form Builder
         </a>
       {% else %}
         <a class="nav-item {% if active=='dashboard' %}active{% endif %}"
@@ -76,19 +90,27 @@
           </svg>
         </button>
         <span class="topbar-greeting">
-          Welcome, {{ session.get('emp_id', 'Employee') }}
+          Welcome, {{ session.get('emp_name') or session.get('emp_id', 'Employee') }}
         </span>
       </div>
 
       <div class="topbar-right">
-        {% if not session.get('is_admin') %}
+        {% if not session.get('is_admin') and allowed_roles and allowed_roles|length > 1 %}
           <form class="role-switch" method="post" action="{{ url_for('set_role') }}">
             <label for="role-select"><span>View as</span></label>
             <select id="role-select" name="role" onchange="this.form.submit()">
-              <option value="employee" {% if session.get('role')=='employee' %}selected{% endif %}>Employee</option>
-              <option value="dept_head" {% if session.get('role')=='dept_head' %}selected{% endif %}>Department Head (HOD)</option>
-              <option value="hr_head" {% if session.get('role')=='hr_head' %}selected{% endif %}>HR Head</option>
-              <option value="unit_head" {% if session.get('role')=='unit_head' %}selected{% endif %}>Unit Head</option>
+              {% if 'employee' in allowed_roles %}
+                <option value="employee" {% if session.get('role')=='employee' %}selected{% endif %}>Employee</option>
+              {% endif %}
+              {% if 'dept_head' in allowed_roles %}
+                <option value="dept_head" {% if session.get('role')=='dept_head' %}selected{% endif %}>Department Head (HOD)</option>
+              {% endif %}
+              {% if 'hr_head' in allowed_roles %}
+                <option value="hr_head" {% if session.get('role')=='hr_head' %}selected{% endif %}>HR Head</option>
+              {% endif %}
+              {% if 'unit_head' in allowed_roles %}
+                <option value="unit_head" {% if session.get('role')=='unit_head' %}selected{% endif %}>Unit Head</option>
+              {% endif %}
             </select>
           </form>
         {% endif %}
@@ -135,6 +157,7 @@
 </div>
 
 <script src="{{ url_for('static', filename='app.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 {% block scripts %}{% endblock %}
 
 </body>

@@ -7,9 +7,9 @@
   {% if role == 'dept_head' %}
     Requests waiting on your <strong>Department Head (HOD)</strong> review &amp; verification.
   {% elif role == 'hr_head' %}
-    Requests waiting on your <strong>HR Head</strong> review &amp; endorsement.
+    Requests waiting on your review &amp; endorsement.
   {% elif role == 'unit_head' %}
-    Requests waiting on your <strong>Unit Head</strong> final approval &amp; authorization.
+    Requests waiting on your final approval &amp; authorization.
   {% else %}
     Switch the role selector above to review requests as an authorized approver.
   {% endif %}
@@ -36,7 +36,7 @@
         </span>
       </div>
 
-      <div class="queue-details" style="font-size: 13px; color: #475569; background: #f8fafc; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px;">
+      <div class="queue-details" style="font-size: 13px; color: #475569; background: #f8fafc; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px;">
         {% if r.start_date or r.checkin %}
           <span><strong>Schedule:</strong> {{ r.start_date or r.checkin }} to {{ r.end_date or r.checkout }}</span> &middot;
         {% endif %}
@@ -46,6 +46,30 @@
         {% endif %}
       </div>
 
+      {% if r.details and r.details.form_fields %}
+      <div class="queue-form-fields" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; background: #f1f5f9; padding: 10px 12px; border-radius: 6px; font-size: 12.5px;">
+        {% for f in r.details.form_fields %}
+          {% if f.value %}
+          <div style="background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-flex; align-items: center;">
+            <span style="color: #64748b; font-weight: 600;">{{ f.label or f.key }}:</span>
+            <span style="color: #0f172a; font-weight: 700; margin-left: 5px;">{{ f.value }}</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% elif r.details and r.details.form_data %}
+      <div class="queue-form-fields" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; background: #f1f5f9; padding: 10px 12px; border-radius: 6px; font-size: 12.5px;">
+        {% for k, v in r.details.form_data.items() %}
+          {% if v and not (k in ['department', 'title', 'start_date', 'end_date', 'purpose']) %}
+          <div style="background: #fff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 10px; display: inline-flex; align-items: center;">
+            <span style="color: #64748b; font-weight: 600;">{{ k|replace('_', ' ')|title }}:</span>
+            <span style="color: #0f172a; font-weight: 700; margin-left: 5px;">{{ v }}</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
       <form method="post" action="{{ url_for('decide', req_id=r.id) }}">
         <label class="visually-hidden" for="remark-{{ r.id }}">Remark for request {{ r.id }}</label>
         <textarea id="remark-{{ r.id }}" class="queue-remark" name="remark"
@@ -54,7 +78,7 @@
                   placeholder="Add approval endorsement notes or rejection reason (required if rejecting)..."></textarea>
         <div class="queue-actions" style="display:flex; gap:10px;">
           <button class="ok-btn" type="submit" name="decision" value="approve" style="background:#16a34a; color:#fff; border:none; padding:8px 18px; border-radius:6px; font-weight:600; cursor:pointer;">
-            {% if role == 'unit_head' or (r.current_step_order and r.current_step_order == r.total_steps) %}
+            {% if (r.current_step_order and r.total_steps and r.current_step_order >= r.total_steps) or (r.stage and 'unit_head' in r.stage and not r.total_steps) %}
               Grant Final Approval
             {% else %}
               Approve &amp; Forward to Next Stage

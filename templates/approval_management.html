@@ -32,13 +32,40 @@
     {% endif %}
   </a>
 
-  <a href="{{ url_for('approval_management') }}" class="admin-nav-tab active">
+  <a href="{{ url_for('admin_vehicle_management') }}" class="admin-nav-tab">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="10" width="20" height="8" rx="2"></rect>
+      <path d="M5 10l2-5h10l2 5"></path>
+      <circle cx="7" cy="18" r="2"></circle>
+      <circle cx="17" cy="18" r="2"></circle>
+    </svg>
+    <span>Vehicle Allocation</span>
+    {% if unallocated_vehicle_count and unallocated_vehicle_count > 0 %}
+      <span class="admin-tab-badge badge-attention" style="background:#ea580c; color:#fff;">{{ unallocated_vehicle_count }} Need Car</span>
+    {% else %}
+      <span class="admin-tab-badge">Transport</span>
+    {% endif %}
+  </a>
+
+  <a href="{{ url_for('approval_management') }}" class="admin-nav-tab {% if request.args.get('mode') != 'form-builder' %}active{% endif %}" id="admin-tab-pipeline">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
       <line x1="3" y1="9" x2="21" y2="9"></line>
       <line x1="9" y1="21" x2="9" y2="9"></line>
     </svg>
-    <span>Workflow Designer</span>
+    <span>Approval Pipeline</span>
+  </a>
+
+  <a href="{{ url_for('approval_management') }}?mode=form-builder" class="admin-nav-tab {% if request.args.get('mode') == 'form-builder' %}active{% endif %}" id="admin-tab-form-builder">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+      <polyline points="10 9 9 9 8 9"></polyline>
+    </svg>
+    <span>Dynamic Form Builder</span>
+    <span class="admin-tab-badge" style="background:#2563eb; color:#fff;" id="top-nav-field-count">Form Designer</span>
   </a>
 </nav>
 
@@ -90,6 +117,15 @@
         </svg>
         New Process
       </button>
+      <button type="button" class="wf-btn wf-btn-primary" id="btn-top-switch-mode" style="background:#0756b9; color:#fff; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+        </svg>
+        <span id="btn-top-switch-label">Design Dynamic Form</span>
+      </button>
+
       <button type="button" class="wf-btn wf-btn-outline" id="btn-add-stage">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -106,9 +142,36 @@
   </header>
 
   <!-- =========================================================================
+       DESIGNER VIEW TOGGLE (PIPELINE vs DYNAMIC FORM BUILDER)
+       ========================================================================= -->
+  <div class="wf-mode-toggle-bar">
+    <div class="wf-mode-pill-group">
+      <button type="button" class="wf-mode-pill active" id="btn-mode-pipeline" data-mode="pipeline">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="3" y1="9" x2="21" y2="9"></line>
+          <line x1="9" y1="21" x2="9" y2="9"></line>
+        </svg>
+        Approval Pipeline (Approvers &amp; Stages)
+      </button>
+      <button type="button" class="wf-mode-pill" id="btn-mode-form-builder" data-mode="form-builder">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        Dynamic Form Builder
+        <span class="wf-mode-badge" id="form-field-count-badge">0 fields</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
        MAIN WORKSPACE (CANVAS + PALETTE SIDEBAR)
        ========================================================================= -->
-  <div class="wf-workspace">
+  <div class="wf-workspace" id="wf-pipeline-workspace">
 
     <!-- LEFT / CENTER: WORKFLOW PIPELINE CANVAS -->
     <main class="wf-canvas-area" id="wf-canvas-area">
@@ -208,6 +271,124 @@
       </div>
     </aside>
 
+  </div>
+
+  <!-- =========================================================================
+       DYNAMIC FORM BUILDER WORKSPACE
+       ========================================================================= -->
+  <div class="wf-form-builder-workspace" id="wf-form-builder-workspace" style="display:none;">
+    <!-- Form Builder Header / Controls -->
+    <div class="fb-header-card">
+      <div class="fb-header-info">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <h2 class="fb-title" id="fb-active-process-title">Dynamic Form: Process</h2>
+          <span class="fb-status-tag" id="fb-status-tag">Dynamic Form Active</span>
+        </div>
+        <p class="fb-sub" id="fb-active-process-sub">
+          The admin decides which flow requires which form. Configure the fields, set data types (date, text, number, select, etc.), mark required inputs, and preview what users will see.
+        </p>
+      </div>
+      <div class="fb-header-actions">
+        <!-- Toggle: Enable Dynamic Form -->
+        <label class="fb-toggle-label" title="Decide if this flow requires a dynamic form">
+          <input type="checkbox" id="fb-toggle-enabled" checked>
+          <span class="fb-toggle-slider"></span>
+          <span class="fb-toggle-text">Require Dynamic Form</span>
+        </label>
+
+        <!-- Template Picker -->
+        <div class="fb-template-picker">
+          <label for="fb-template-select" class="visually-hidden">Preset Form Template</label>
+          <select id="fb-template-select" class="wf-select" style="font-size:13px; height:38px;">
+            <option value="">⚡ Load Preset Template...</option>
+            <option value="guest_house">Guest House Accommodation</option>
+            <option value="vip_hall">VIP Conference &amp; Banquet Hall</option>
+            <option value="travel_request">Travel &amp; Conveyance Requisition</option>
+            <option value="it_asset">Asset &amp; IT Equipment Request</option>
+            <option value="blank">Blank Form (Start Fresh)</option>
+          </select>
+          <button type="button" class="wf-btn wf-btn-outline" id="btn-apply-template" title="Apply chosen preset template">Apply</button>
+        </div>
+
+        <button type="button" class="wf-btn wf-btn-primary" id="btn-add-form-field">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Add Field
+        </button>
+
+        <button type="button" class="wf-btn wf-btn-secondary" id="btn-save-form-config" style="background:#16a34a; border-color:#16a34a; color:#fff;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          Save Form
+        </button>
+      </div>
+    </div>
+
+    <!-- Form Metadata Bar -->
+    <div class="fb-meta-bar">
+      <div style="flex: 1 1 300px;">
+        <label class="crud-form-label" for="fb-form-title">Form Title Displayed to User</label>
+        <input type="text" id="fb-form-title" class="crud-form-input" placeholder="e.g. VIP Hall Booking Request Form">
+      </div>
+      <div style="flex: 2 1 450px;">
+        <label class="crud-form-label" for="fb-form-desc">Form Instructions / Guidance for User</label>
+        <input type="text" id="fb-form-desc" class="crud-form-input" placeholder="e.g. Please specify room layout, AV requirements, and business justification.">
+      </div>
+    </div>
+
+    <!-- Split View: Configured Fields Manager & Live User Preview -->
+    <div class="fb-split-container">
+      <!-- LEFT PANE: Configured Fields Manager -->
+      <div class="fb-fields-pane">
+        <div class="fb-pane-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h3 class="fb-pane-title">Configured Fields</h3>
+            <span class="fb-field-count-pill" id="fb-field-count-pill">0 fields</span>
+          </div>
+          <button type="button" class="btn-text-sm" id="btn-add-field-link" style="color:#0756b9; font-weight:700;">+ Add New Field</button>
+        </div>
+
+        <div class="fb-fields-list" id="fb-fields-list">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- RIGHT PANE: Live Interactive User Preview -->
+      <div class="fb-preview-pane">
+        <div class="fb-pane-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h3 class="fb-pane-title">Live User Form Preview</h3>
+            <span class="fb-preview-live-badge">
+              <span class="live-dot"></span> Live Interactive
+            </span>
+          </div>
+          <span style="font-size:12px; color:#64748b;">What user sees in submission modal</span>
+        </div>
+
+        <div class="fb-preview-card">
+          <div class="fb-preview-header">
+            <div class="fb-preview-chip">Employee Service Request</div>
+            <h4 class="fb-preview-title" id="fb-preview-title">Process Request Form</h4>
+            <p class="fb-preview-desc" id="fb-preview-desc">Fill in the fields below to submit for multi-stage approval.</p>
+          </div>
+
+          <div class="fb-preview-sample-applicant">
+            <div><span>Applicant:</span> <strong>Employee Name (EMP001)</strong></div>
+            <div><span>Department:</span> <strong>Operations &amp; Port Logistics</strong></div>
+          </div>
+
+          <form id="fb-preview-form" onsubmit="event.preventDefault(); window.Portal.toast('Form is valid! This is a live preview.', 'success');">
+            <div class="fb-preview-grid" id="fb-preview-fields-grid">
+              <!-- Inputs rendered here in real time -->
+            </div>
+
+            <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+              <button type="submit" class="btn-primary-action" style="font-size:13.5px; padding:10px 20px;">
+                Test Submit (Preview)
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -311,7 +492,7 @@
       <button type="button" class="wf-modal-close" id="modal-assign-close">&times;</button>
     </div>
     <div class="wf-modal-body">
-      <div class="palette-search-box" style="margin-bottom:14px;">
+      <div class="palette-search-box" style="margin-bottom:12px;">
         <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.5">
           <circle cx="11" cy="11" r="8"></circle>
@@ -319,10 +500,164 @@
         </svg>
         <input type="text" id="assign-modal-search" placeholder="Quick search employee...">
       </div>
+      <div class="source-pills modal-source-pills" id="modal-source-pills" style="margin-bottom:14px;display:none;">
+        <button type="button" class="source-pill active" data-source="all">All</button>
+        <button type="button" class="source-pill" data-source="staff">Staff</button>
+        <button type="button" class="source-pill" data-source="associates">Associates</button>
+      </div>
       <div class="assign-quick-list" id="assign-quick-list">
         <!-- Rendered dynamically -->
       </div>
     </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: DYNAMIC FIELD EDITOR (ADD / EDIT FORM FIELD)
+     ========================================================================= -->
+<div class="wf-modal" id="modal-field-editor" aria-hidden="true">
+  <div class="wf-modal-box" style="width:min(660px, 98vw); max-width:660px;">
+    <div class="wf-modal-header">
+      <div>
+        <h3 class="wf-modal-title" id="field-editor-modal-title">Add Dynamic Field</h3>
+        <p class="wf-modal-subtitle">Define field label, data type, validation requirements, and layout options.</p>
+      </div>
+      <button type="button" class="wf-modal-close" id="modal-field-editor-close">&times;</button>
+    </div>
+
+    <form id="form-field-editor" class="wf-modal-body">
+      <input type="hidden" id="fe-field-id" value="">
+      <input type="hidden" id="fe-is-edit" value="false">
+
+      <div class="crud-error-msg" id="fe-error-msg" style="display:none; color:#dc2626; background:#fee2e2; padding:8px 12px; border-radius:6px; margin-bottom:12px; font-size:13px;"></div>
+
+      <div class="crud-form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <!-- Field Label -->
+        <div class="crud-form-group" style="grid-column: span 1;">
+          <label class="crud-form-label" for="fe-label" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Field Label <span class="required" style="color:#dc2626;">*</span>
+          </label>
+          <input class="crud-form-input" type="text" id="fe-label" required
+                 placeholder="e.g. Expected Return Date, Room Category..."
+                 style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+        </div>
+
+        <!-- Field Key / Name -->
+        <div class="crud-form-group" style="grid-column: span 1;">
+          <label class="crud-form-label" for="fe-name" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Field Key / Name <span class="required" style="color:#dc2626;">*</span>
+          </label>
+          <input class="crud-form-input" type="text" id="fe-name" required
+                 placeholder="e.g. return_date, room_category"
+                 style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-family:monospace; font-size:12.5px;">
+        </div>
+
+        <!-- Data Type -->
+        <div class="crud-form-group" style="grid-column: span 1;">
+          <label class="crud-form-label" for="fe-type" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Data Type <span class="required" style="color:#dc2626;">*</span>
+          </label>
+          <select class="crud-form-select" id="fe-type" required
+                  style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+            <option value="text">Text (Single Line)</option>
+            <option value="number">Number (Numeric / Count / Cost)</option>
+            <option value="date">Date (Calendar Picker)</option>
+            <option value="textarea">Textarea (Paragraph / Multi-line)</option>
+            <option value="select">Dropdown Menu (Choice List)</option>
+            <option value="checkbox">Checkbox (Yes / No Toggle)</option>
+            <option value="time">Time (Time Picker)</option>
+            <option value="email">Email Address</option>
+            <option value="tel">Phone / Contact Number</option>
+          </select>
+        </div>
+
+        <!-- Required Status -->
+        <div class="crud-form-group" style="grid-column: span 1;">
+          <label class="crud-form-label" for="fe-required" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Is Mandatory / Required? <span class="required" style="color:#dc2626;">*</span>
+          </label>
+          <select class="crud-form-select" id="fe-required"
+                  style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+            <option value="true">★ Required (Mandatory)</option>
+            <option value="false">○ Optional (Not required)</option>
+          </select>
+        </div>
+
+        <!-- Layout Width -->
+        <div class="crud-form-group" style="grid-column: span 1;">
+          <label class="crud-form-label" for="fe-width" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Grid Layout Width
+          </label>
+          <select class="crud-form-select" id="fe-width"
+                  style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+            <option value="half">Half Width (50% - Side by Side)</option>
+            <option value="full">Full Width (100% - Full Row)</option>
+          </select>
+        </div>
+
+        <!-- Placeholder -->
+        <div class="crud-form-group" style="grid-column: span 1;">
+          <label class="crud-form-label" for="fe-placeholder" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Placeholder Text
+          </label>
+          <input class="crud-form-input" type="text" id="fe-placeholder"
+                 placeholder="e.g. Enter details..."
+                 style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+        </div>
+
+        <!-- Help Guidance Note -->
+        <div class="crud-form-group" style="grid-column: span 2;">
+          <label class="crud-form-label" for="fe-help-text" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Helper Instructions for Employee (Optional)
+          </label>
+          <input class="crud-form-input" type="text" id="fe-help-text"
+                 placeholder="e.g. Mandatory for departmental compliance and auditing"
+                 style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+        </div>
+
+        <!-- Options for Select -->
+        <div class="crud-form-group" id="fe-options-container" style="grid-column: span 2; display:none;">
+          <label class="crud-form-label" for="fe-options" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Dropdown Menu Options (One choice per line or comma-separated) <span class="required" style="color:#dc2626;">*</span>
+          </label>
+          <textarea class="crud-form-input" id="fe-options" rows="3"
+                    placeholder="Executive Suite&#10;Deluxe Room&#10;VIP Hall&#10;Standard Twin"
+                    style="width:100%; height:auto; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;"></textarea>
+          <small style="color:#64748b; font-size:11.5px; display:block; margin-top:2px;">Each line will become a selectable option in the user's dropdown menu.</small>
+        </div>
+
+        <!-- Default Value -->
+        <div class="crud-form-group" id="fe-default-container" style="grid-column: span 1;">
+          <label class="crud-form-label" for="fe-default" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">
+            Default Value (Optional)
+          </label>
+          <input class="crud-form-input" type="text" id="fe-default"
+                 placeholder="Optional initial value"
+                 style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+        </div>
+
+        <!-- Min & Max for Numbers -->
+        <div class="crud-form-group" id="fe-minmax-container" style="grid-column: span 1; display:none;">
+          <div style="display:flex; gap:10px;">
+            <div style="flex:1;">
+              <label class="crud-form-label" for="fe-min" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">Min</label>
+              <input class="crud-form-input" type="number" id="fe-min" placeholder="0"
+                     style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+            </div>
+            <div style="flex:1;">
+              <label class="crud-form-label" for="fe-max" style="font-weight:700; font-size:13px; display:block; margin-bottom:4px;">Max</label>
+              <input class="crud-form-input" type="number" id="fe-max" placeholder="100"
+                     style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-modal-footer" style="margin-top:16px;">
+        <button type="button" class="wf-btn wf-btn-outline" id="modal-field-editor-cancel">Cancel</button>
+        <button type="submit" class="wf-btn wf-btn-primary" id="btn-save-field-submit">Save Field</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -342,8 +677,16 @@
   // State
   let currentWorkflowId = WORKFLOWS.length > 0 ? WORKFLOWS[0].id : null;
   let activeFlowData = null;
+  let activeFormSchema = {
+    enabled: true,
+    title: '',
+    description: '',
+    fields: []
+  };
+  let currentDesignerMode = 'pipeline';
   let isDirty = false;
   let targetStageForModal = null;
+  let modalActiveSource = 'all';
 
   // Cache employee lookup by ID
   const employeeMap = new Map();
@@ -360,6 +703,49 @@
   const btnRenameWf = document.getElementById('btn-rename-wf');
   const btnDeleteWf = document.getElementById('btn-delete-wf');
   const btnClearApprovers = document.getElementById('btn-clear-approvers');
+
+  const btnModePipeline = document.getElementById('btn-mode-pipeline');
+  const btnModeFormBuilder = document.getElementById('btn-mode-form-builder');
+  const pipelineWorkspace = document.getElementById('wf-pipeline-workspace');
+  const formBuilderWorkspace = document.getElementById('wf-form-builder-workspace');
+  const formFieldCountBadge = document.getElementById('form-field-count-badge');
+  const fbFieldCountPill = document.getElementById('fb-field-count-pill');
+  const fbToggleEnabled = document.getElementById('fb-toggle-enabled');
+  const fbStatusTag = document.getElementById('fb-status-tag');
+  const fbActiveProcessTitle = document.getElementById('fb-active-process-title');
+  const fbFormTitle = document.getElementById('fb-form-title');
+  const fbFormDesc = document.getElementById('fb-form-desc');
+  const fbFieldsList = document.getElementById('fb-fields-list');
+  const fbPreviewFieldsGrid = document.getElementById('fb-preview-fields-grid');
+  const fbPreviewTitle = document.getElementById('fb-preview-title');
+  const fbPreviewDesc = document.getElementById('fb-preview-desc');
+  const btnAddFormField = document.getElementById('btn-add-form-field');
+  const btnAddFieldLink = document.getElementById('btn-add-field-link');
+  const btnSaveFormConfig = document.getElementById('btn-save-form-config');
+  const fbTemplateSelect = document.getElementById('fb-template-select');
+  const btnApplyTemplate = document.getElementById('btn-apply-template');
+
+  // Field Editor Modal elements
+  const modalFieldEditor = document.getElementById('modal-field-editor');
+  const modalFieldEditorClose = document.getElementById('modal-field-editor-close');
+  const modalFieldEditorCancel = document.getElementById('modal-field-editor-cancel');
+  const formFieldEditor = document.getElementById('form-field-editor');
+  const feFieldId = document.getElementById('fe-field-id');
+  const feIsEdit = document.getElementById('fe-is-edit');
+  const feLabel = document.getElementById('fe-label');
+  const feName = document.getElementById('fe-name');
+  const feType = document.getElementById('fe-type');
+  const feRequired = document.getElementById('fe-required');
+  const feWidth = document.getElementById('fe-width');
+  const fePlaceholder = document.getElementById('fe-placeholder');
+  const feHelpText = document.getElementById('fe-help-text');
+  const feOptions = document.getElementById('fe-options');
+  const feOptionsContainer = document.getElementById('fe-options-container');
+  const feDefault = document.getElementById('fe-default');
+  const feMin = document.getElementById('fe-min');
+  const feMax = document.getElementById('fe-max');
+  const feMinmaxContainer = document.getElementById('fe-minmax-container');
+  const feErrorMsg = document.getElementById('fe-error-msg');
 
   const paletteSearch = document.getElementById('palette-search');
   const paletteClearSearch = document.getElementById('palette-clear-search');
@@ -383,13 +769,79 @@
   init();
 
   function init() {
+    updateSourcePills();
     populateDeptFilter();
     renderPaletteEmployees();
     bindEvents();
     bindZoomEvents();
 
+    var urlParams = new URLSearchParams(window.location.search);
+    var modeParam = urlParams.get('mode');
+    var wfParam = urlParams.get('wf') || urlParams.get('workflow_id');
+    if (wfParam && wfSelect) {
+      var opt = wfSelect.querySelector('option[value="' + wfParam + '"]');
+      if (opt) {
+        wfSelect.value = wfParam;
+        currentWorkflowId = Number(wfParam);
+      }
+    }
+
     if (currentWorkflowId) {
-      loadWorkflow(currentWorkflowId);
+      loadWorkflow(currentWorkflowId).then(function() {
+        if (modeParam === 'form-builder' || window.location.hash === '#form-builder') {
+          setDesignerMode('form-builder');
+        }
+      });
+    } else {
+      if (modeParam === 'form-builder' || window.location.hash === '#form-builder') {
+        setDesignerMode('form-builder');
+      }
+    }
+  }
+
+  function updateSourcePills() {
+    const hasStaff = EMPLOYEES.some(e => e.source_type === 'staff');
+    const hasAssociates = EMPLOYEES.some(e => e.source_type === 'associates');
+    const staffCount = EMPLOYEES.filter(e => e.source_type === 'staff').length;
+    const assocCount = EMPLOYEES.filter(e => e.source_type === 'associates').length;
+
+    const staffPill = sourcePills.querySelector('[data-source="staff"]');
+    const assocPill = sourcePills.querySelector('[data-source="associates"]');
+    const allPill = sourcePills.querySelector('[data-source="all"]');
+
+    if (staffPill) staffPill.textContent = `Staff (${staffCount})`;
+    if (assocPill) {
+      assocPill.textContent = `Associates (${assocCount})`;
+      assocPill.style.display = hasAssociates ? '' : 'none';
+    }
+    if (allPill) {
+      allPill.textContent = `All (${EMPLOYEES.length})`;
+      if (!hasAssociates && hasStaff) {
+        allPill.style.display = 'none';
+        staffPill.classList.add('active');
+        allPill.classList.remove('active');
+      } else if (!hasStaff && hasAssociates) {
+        allPill.style.display = 'none';
+        assocPill.classList.add('active');
+        allPill.classList.remove('active');
+      } else {
+        allPill.style.display = '';
+      }
+    }
+
+    const modalPillsContainer = document.getElementById('modal-source-pills');
+    if (modalPillsContainer) {
+      if (hasStaff && hasAssociates) {
+        modalPillsContainer.style.display = 'flex';
+        const mStaff = modalPillsContainer.querySelector('[data-source="staff"]');
+        const mAssoc = modalPillsContainer.querySelector('[data-source="associates"]');
+        const mAll = modalPillsContainer.querySelector('[data-source="all"]');
+        if (mStaff) mStaff.textContent = `Staff (${staffCount})`;
+        if (mAssoc) mAssoc.textContent = `Associates (${assocCount})`;
+        if (mAll) mAll.textContent = `All (${EMPLOYEES.length})`;
+      } else {
+        modalPillsContainer.style.display = 'none';
+      }
     }
   }
 
@@ -593,10 +1045,20 @@
         activeFlowData = constructDefaultFlowData(data.workflow || data);
       }
 
+      // Load form schema
+      if (data.form_schema) {
+        activeFormSchema = data.form_schema;
+      } else if (data.workflow && data.workflow.form_schema) {
+        activeFormSchema = data.workflow.form_schema;
+      } else {
+        activeFormSchema = getDefaultFormSchema(data.name || 'Process');
+      }
+
       // Guarantee Step 1 (Unit Head) and Step 2 (HR Head) remain constant foundation
       ensureConstantStepsAndBranches(activeFlowData);
 
       renderCanvas();
+      renderFormBuilder();
       setSaveStatus('saved', 'All changes saved');
       isDirty = false;
     } catch (err) {
@@ -609,12 +1071,12 @@
   function ensureConstantStepsAndBranches(flowData) {
     if (!flowData || !flowData.stages) return;
 
-    // 1. Ensure Step 1: Final Approval (Unit Head) - Top Level Constant
+    // 1. Ensure Step 1: Final Approval - Top Level Constant
     let finalStage = flowData.stages.find(s => s.is_final);
     if (!finalStage) {
       finalStage = {
         id: 'stage-final',
-        name: 'Final Approval (Unit Head)',
+        name: 'Final Approval',
         is_final: true,
         order: 1,
         parent_id: null,
@@ -624,12 +1086,12 @@
     }
     finalStage.order = 1;
 
-    // 2. Ensure Step 2: HR Head Review - Constant Direct Subordinate of Step 1
+    // 2. Ensure Step 2: Stage 2 Review - Constant Direct Subordinate of Step 1
     let hrStage = flowData.stages.find(s => !s.is_final && (s.is_hr_stage || s.order === 2));
     if (!hrStage) {
       hrStage = {
         id: 'stage-hr',
-        name: 'Stage 2: HR Head Review',
+        name: 'Stage 2 Review',
         is_final: false,
         is_hr_stage: true,
         order: 2,
@@ -683,7 +1145,7 @@
         stages.push({
           id: `stage-${st.id || idx + 1}`,
           db_id: st.id,
-          name: st.step_name || (st.is_final ? 'Final Approval (Unit Head)' : (st.step_order === 2 ? 'Stage 2: HR Head Review' : `Department Review`)),
+          name: st.step_name || (st.is_final ? 'Final Approval' : (st.step_order === 2 ? 'Stage 2 Review' : `Department Review`)),
           is_final: !!st.is_final,
           order: st.step_order || (idx + 1),
           is_hr_stage: !st.is_final && (st.step_order === 2 || (st.step_name && st.step_name.toLowerCase().includes('hr'))),
@@ -741,7 +1203,7 @@
     }
 
     if (hrStage) {
-      trunk.appendChild(createConnectorElement('Submits upward to Final Approver (Unit Head)'));
+      trunk.appendChild(createConnectorElement('Submits upward to Final Approver'));
       const card2 = createStageElement(hrStage, 'stage2', 0);
       trunk.appendChild(card2);
     }
@@ -882,13 +1344,13 @@
       badge.className = 'stage-badge-pill stage-1-pill';
       badge.innerHTML = `
         <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-        STEP 1: FINAL APPROVAL (UNIT HEAD) • CONSTANT
+        STEP 1: FINAL APPROVAL • CONSTANT
       `;
     } else if (type === 'stage2') {
       badge.className = 'stage-badge-pill stage-2-pill';
       badge.innerHTML = `
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        STEP 2: HR HEAD REVIEW • CONSTANT
+        STEP 2: REVIEW STAGE • CONSTANT
       `;
     } else if (type === 'hod') {
       badge.className = 'stage-badge-pill stage-hod-pill';
@@ -913,7 +1375,7 @@
     const titleInput = document.createElement('input');
     titleInput.type = 'text';
     titleInput.className = 'stage-title-input';
-    titleInput.value = stage.name || (type === 'stage1' ? 'Final Approval (Unit Head)' : (type === 'stage2' ? 'Stage 2: HR Head Review' : 'Department Review'));
+    titleInput.value = stage.name || (type === 'stage1' ? 'Final Approval' : (type === 'stage2' ? 'Stage 2 Review' : 'Department Review'));
     titleInput.title = 'Click to edit stage title';
     titleInput.addEventListener('input', function () {
       stage.name = this.value;
@@ -976,13 +1438,13 @@
       placeholder.className = 'drop-placeholder';
       if (type === 'stage1') {
         placeholder.innerHTML = `
-          <span style="font-weight:700;color:#1e40af;">Drag Unit Head / Final Approver here</span>
-          <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign Unit Head</span>
+          <span style="font-weight:700;color:#1e40af;">Drag Final Approver here</span>
+          <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign Final Approver</span>
         `;
       } else if (type === 'stage2') {
         placeholder.innerHTML = `
-          <span style="font-weight:700;color:#7c3aed;">Drag HR Head Approver here</span>
-          <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign HR Head</span>
+          <span style="font-weight:700;color:#7c3aed;">Drag Stage 2 Reviewer here</span>
+          <span style="font-size:11px;font-weight:400;color:#94a3b8;">or click to assign Reviewer</span>
         `;
       } else if (type === 'hod') {
         placeholder.innerHTML = `
@@ -1073,7 +1535,7 @@
       designation: empData.designation || masterEmp.designation || '',
       department: empData.department || masterEmp.department || '',
       source_type: empData.source_type || masterEmp.source_type || 'staff',
-      role_label: stage.is_final ? 'Final Approver' : (stage.is_hr_stage ? 'HR Head' : (stage.designation || 'Reviewer'))
+      role_label: stage.is_final ? 'Final Approver' : (stage.is_hr_stage ? 'Reviewer' : (stage.designation || 'Reviewer'))
     });
 
     markDirty();
@@ -1248,7 +1710,7 @@
     if (!stage) return;
 
     if (stage.is_final || stage.is_hr_stage || stage.order === 1 || stage.order === 2) {
-      Portal.toast('Unit Head and HR Head are fixed stages and cannot be deleted.', 'error');
+      Portal.toast('Stage 1 and Stage 2 are fixed stages and cannot be deleted.', 'error');
       return;
     }
 
@@ -1304,7 +1766,8 @@
       const payload = {
         flow_data: activeFlowData,
         name: activeFlowData.name,
-        description: activeFlowData.description || ''
+        description: activeFlowData.description || '',
+        form_schema: activeFormSchema
       };
 
       const res = await fetch(`/admin/approval-workflows/${currentWorkflowId}/save`, {
@@ -1356,6 +1819,13 @@
     const stage = activeFlowData.stages.find(s => s.id === stageId);
     document.getElementById('assign-modal-title').textContent = `Assign Approver: ${stage ? stage.name : ''}`;
     document.getElementById('assign-modal-search').value = '';
+    modalActiveSource = 'all';
+    const modalPillsContainer = document.getElementById('modal-source-pills');
+    if (modalPillsContainer) {
+      modalPillsContainer.querySelectorAll('.source-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.source === 'all');
+      });
+    }
     renderAssignModalList('');
     modalAssign.classList.add('open');
   }
@@ -1364,6 +1834,13 @@
     targetStageForModal = '__NEW_BRANCH__';
     document.getElementById('assign-modal-title').textContent = 'Add Department HOD (New Branch)';
     document.getElementById('assign-modal-search').value = '';
+    modalActiveSource = 'all';
+    const modalPillsContainer = document.getElementById('modal-source-pills');
+    if (modalPillsContainer) {
+      modalPillsContainer.querySelectorAll('.source-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.source === 'all');
+      });
+    }
     renderAssignModalList('');
     modalAssign.classList.add('open');
   }
@@ -1374,11 +1851,15 @@
     const q = (query || '').toLowerCase();
 
     const filtered = EMPLOYEES.filter(emp => {
+      if (modalActiveSource !== 'all') {
+        if (emp.source_type !== modalActiveSource) return false;
+      }
       if (!q) return true;
       return (emp.employee_name || '').toLowerCase().includes(q) ||
         (emp.employee_id || '').toLowerCase().includes(q) ||
-        (emp.department || '').toLowerCase().includes(q);
-    }).slice(0, 30); // limit to top 30 for performance
+        (emp.department || '').toLowerCase().includes(q) ||
+        (emp.designation || '').toLowerCase().includes(q);
+    }).slice(0, 50); // limit to top 50 for performance
 
     if (filtered.length === 0) {
       list.innerHTML = `<p style="text-align:center;color:#8c9eb4;font-size:12px;padding:20px;">No employees match your search.</p>`;
@@ -1406,6 +1887,493 @@
       });
       list.appendChild(item);
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // Dynamic Form Builder Engine & Presets
+  // -------------------------------------------------------------------------
+  const PRESET_TEMPLATES = {
+    guest_house: {
+      enabled: true,
+      title: 'Guest House Reservation Form',
+      description: 'Submit room booking requests for visiting guests, vendors, or dignitaries.',
+      fields: [
+        { id: 'f_guest_name', name: 'title', label: 'Guest / Visitor Name', type: 'text', required: true, width: 'full', placeholder: 'e.g. Mr. Arun Mehta (Vendor Auditor)', help_text: 'Primary visitor arriving at port facility' },
+        { id: 'f_checkin', name: 'start_date', label: 'Check-in Date', type: 'date', required: true, width: 'half', placeholder: '', help_text: 'Expected arrival date' },
+        { id: 'f_checkout', name: 'end_date', label: 'Check-out Date', type: 'date', required: true, width: 'half', placeholder: '', help_text: 'Expected departure date' },
+        { id: 'f_guests', name: 'num_guests', label: 'Number of Guests', type: 'number', required: true, width: 'half', placeholder: '1', default_value: '1', min: 1, max: 50, help_text: 'Total occupants' },
+        { id: 'f_facility', name: 'facility_type', label: 'Room / Accommodation Category', type: 'select', required: true, width: 'half', options: ['Executive Suite (VP / CXO / Senior Dignitaries)', 'Deluxe AC Room', 'VIP Conference & Banquet Hall', 'Standard Twin Sharing'], default_value: 'Executive Suite (VP / CXO / Senior Dignitaries)' },
+        { id: 'f_purpose', name: 'purpose', label: 'Official Business Justification', type: 'textarea', required: true, width: 'full', placeholder: 'State visiting plant department, business agenda...', help_text: 'Mandatory for departmental authorization' },
+        { id: 'f_special', name: 'special_instructions', label: 'Special Requests & Dietary Preferences', type: 'text', required: false, width: 'full', placeholder: 'e.g. Vegetarian meals, late check-in...' }
+      ]
+    },
+    vip_hall: {
+      enabled: true,
+      title: 'VIP Hall & Conference Booking Form',
+      description: 'Reserve VIP banquet or conference halls for high-level meetings, seminars, and corporate events.',
+      fields: [
+        { id: 'f_event_title', name: 'title', label: 'Event / Meeting Subject', type: 'text', required: true, width: 'full', placeholder: 'e.g. Annual Operations Review & Port Townhall' },
+        { id: 'f_start_date', name: 'start_date', label: 'Event Start Date', type: 'date', required: true, width: 'half' },
+        { id: 'f_end_date', name: 'end_date', label: 'Event End Date', type: 'date', required: true, width: 'half' },
+        { id: 'f_start_time', name: 'start_time', label: 'Commencement Time', type: 'time', required: true, width: 'half' },
+        { id: 'f_expected_pax', name: 'num_guests', label: 'Expected Attendees (PAX)', type: 'number', required: true, width: 'half', placeholder: '25', default_value: '20', min: 5, max: 500 },
+        { id: 'f_layout', name: 'facility_type', label: 'Seating Arrangement Layout', type: 'select', required: true, width: 'half', options: ['Boardroom U-Shape Table', 'Theater Style Auditorium', 'Classroom Style with Tables', 'Round Table Banquet Setup'], default_value: 'Boardroom U-Shape Table' },
+        { id: 'f_av', name: 'av_setup', label: 'Audio / Visual Setup', type: 'select', required: true, width: 'half', options: ['Full Dual Projector, Podium Mic & Surround Audio', 'Video Conferencing (Teams/Zoom) Hybrid Rig', 'Podium & Wireless Mic Only', 'No AV Setup Required'], default_value: 'Full Dual Projector, Podium Mic & Surround Audio' },
+        { id: 'f_purpose', name: 'purpose', label: 'Event Objectives & Agenda Details', type: 'textarea', required: true, width: 'full', placeholder: 'Detail the agenda and external dignitaries attending...' },
+        { id: 'f_catering', name: 'catering_required', label: 'Tea / High-Tea / Refreshments Required', type: 'checkbox', required: false, width: 'half', default_value: 'true', help_text: 'Check if Canteen Hospitality should arrange service' }
+      ]
+    },
+    travel_request: {
+      enabled: true,
+      title: 'Travel & Conveyance Requisition Form',
+      description: 'Submit official duty travel, plant visits, and transportation requisitions.',
+      fields: [
+        { id: 'f_dest', name: 'destination', label: 'Destination City / Plant Location', type: 'text', required: true, width: 'full', placeholder: 'e.g. JSW Mumbai HQ / Vijayanagar Works' },
+        { id: 'f_dep_date', name: 'start_date', label: 'Departure Date', type: 'date', required: true, width: 'half' },
+        { id: 'f_ret_date', name: 'end_date', label: 'Return Date', type: 'date', required: true, width: 'half' },
+        { id: 'f_mode', name: 'travel_mode', label: 'Preferred Mode of Travel', type: 'select', required: true, width: 'half', options: ['Air Travel (Economy)', 'Train (2-Tier AC)', 'Company Pool Vehicle', 'Personal Vehicle (Reimbursement)'], default_value: 'Air Travel (Economy)' },
+        { id: 'f_est_cost', name: 'estimated_cost', label: 'Estimated Budget / Cost (INR)', type: 'number', required: true, width: 'half', placeholder: '15000', min: 100 },
+        { id: 'f_purpose', name: 'purpose', label: 'Official Travel Justification & Project Code', type: 'textarea', required: true, width: 'full', placeholder: 'Explain business justification, client/vendor meetings scheduled...' }
+      ]
+    },
+    it_asset: {
+      enabled: true,
+      title: 'Asset & IT Equipment Requisition Form',
+      description: 'Request computer hardware, peripheral allocation, or departmental software licenses.',
+      fields: [
+        { id: 'f_asset_type', name: 'facility_type', label: 'Asset / Equipment Category', type: 'select', required: true, width: 'half', options: ['High Performance Laptop (Engineering / CAD)', 'Standard Workstation', 'Dual Monitor Display Rig', 'Mobile Tablet for Port Yard', 'Specialized Software License'], default_value: 'High Performance Laptop (Engineering / CAD)' },
+        { id: 'f_qty', name: 'quantity', label: 'Quantity Required', type: 'number', required: true, width: 'half', default_value: '1', min: 1, max: 10 },
+        { id: 'f_req_date', name: 'start_date', label: 'Required By Date', type: 'date', required: true, width: 'half' },
+        { id: 'f_replacement', name: 'is_replacement', label: 'Is this replacing damaged/obsolete equipment?', type: 'checkbox', required: false, width: 'half', default_value: 'false' },
+        { id: 'f_purpose', name: 'purpose', label: 'Technical Specification & Justification', type: 'textarea', required: true, width: 'full', placeholder: 'Explain why this asset is required for your role or department...' }
+      ]
+    },
+    blank: {
+      enabled: true,
+      title: '',
+      description: '',
+      fields: []
+    }
+  };
+
+  function getDefaultFormSchema(name) {
+    var lower = (name || '').toLowerCase();
+    if (lower.includes('guest')) {
+      return JSON.parse(JSON.stringify(PRESET_TEMPLATES.guest_house));
+    }
+    if (lower.includes('vip') || lower.includes('hall')) {
+      return JSON.parse(JSON.stringify(PRESET_TEMPLATES.vip_hall));
+    }
+    if (lower.includes('travel')) {
+      return JSON.parse(JSON.stringify(PRESET_TEMPLATES.travel_request));
+    }
+    return {
+      enabled: true,
+      title: name + ' Request Form',
+      description: 'Fill in the required information to initiate review.',
+      fields: [
+        { id: 'f_title', name: 'title', label: 'Request Title / Subject', type: 'text', required: true, width: 'full', placeholder: 'Enter request subject' },
+        { id: 'f_start', name: 'start_date', label: 'Start Date', type: 'date', required: true, width: 'half' },
+        { id: 'f_end', name: 'end_date', label: 'End Date', type: 'date', required: true, width: 'half' },
+        { id: 'f_purpose', name: 'purpose', label: 'Purpose & Justification', type: 'textarea', required: true, width: 'full', placeholder: 'Explain business justification...' }
+      ]
+    };
+  }
+
+  function setDesignerMode(mode) {
+    currentDesignerMode = mode;
+    var tabPipeline = document.getElementById('admin-tab-pipeline');
+    var tabFormBuilder = document.getElementById('admin-tab-form-builder');
+    var topSwitchBtn = document.getElementById('btn-top-switch-mode');
+    var topSwitchLabel = document.getElementById('btn-top-switch-label');
+
+    if (mode === 'pipeline') {
+      if (btnModePipeline) btnModePipeline.classList.add('active');
+      if (btnModeFormBuilder) btnModeFormBuilder.classList.remove('active');
+      if (tabPipeline) tabPipeline.classList.add('active');
+      if (tabFormBuilder) tabFormBuilder.classList.remove('active');
+      if (pipelineWorkspace) pipelineWorkspace.style.display = 'flex';
+      if (formBuilderWorkspace) formBuilderWorkspace.style.display = 'none';
+      if (btnAddStage) btnAddStage.style.display = '';
+      if (topSwitchLabel) topSwitchLabel.textContent = 'Design Dynamic Form';
+      if (topSwitchBtn) topSwitchBtn.style.background = '#0756b9';
+      try {
+        var newUrl = window.location.pathname + (currentWorkflowId ? '?wf=' + currentWorkflowId : '');
+        window.history.replaceState({ mode: 'pipeline', wf: currentWorkflowId }, '', newUrl);
+      } catch (e) {}
+    } else {
+      if (btnModePipeline) btnModePipeline.classList.remove('active');
+      if (btnModeFormBuilder) btnModeFormBuilder.classList.add('active');
+      if (tabPipeline) tabPipeline.classList.remove('active');
+      if (tabFormBuilder) tabFormBuilder.classList.add('active');
+      if (pipelineWorkspace) pipelineWorkspace.style.display = 'none';
+      if (formBuilderWorkspace) formBuilderWorkspace.style.display = 'flex';
+      if (btnAddStage) btnAddStage.style.display = 'none';
+      if (topSwitchLabel) topSwitchLabel.textContent = 'View Approval Pipeline';
+      if (topSwitchBtn) topSwitchBtn.style.background = '#059669';
+      try {
+        var newUrl = window.location.pathname + '?mode=form-builder' + (currentWorkflowId ? '&wf=' + currentWorkflowId : '');
+        window.history.replaceState({ mode: 'form-builder', wf: currentWorkflowId }, '', newUrl);
+      } catch (e) {}
+      renderFormBuilder();
+    }
+  }
+
+  function updateFieldCountBadges() {
+    var count = (activeFormSchema && activeFormSchema.fields) ? activeFormSchema.fields.length : 0;
+    var text = count + (count === 1 ? ' field' : ' fields');
+    if (formFieldCountBadge) formFieldCountBadge.textContent = text;
+    if (fbFieldCountPill) fbFieldCountPill.textContent = text;
+    var topNavCount = document.getElementById('top-nav-field-count');
+    if (topNavCount) topNavCount.textContent = count + ' fields';
+  }
+
+  function normalizeSchemaFields() {
+    if (!activeFormSchema) activeFormSchema = { enabled: true, title: '', description: '', fields: [] };
+    if (!Array.isArray(activeFormSchema.fields)) activeFormSchema.fields = [];
+    activeFormSchema.fields.forEach(function (f, idx) {
+      if (!f.id) {
+        f.id = f.name ? ('f_' + f.name) : ('f_' + idx + '_' + Date.now().toString(36));
+      }
+    });
+  }
+
+  function renderFormBuilder() {
+    normalizeSchemaFields();
+    updateFieldCountBadges();
+
+    var currentWfName = (activeFlowData && activeFlowData.name) || (WORKFLOWS.find(w => w.id === currentWorkflowId) || {}).name || 'Process';
+    if (fbActiveProcessTitle) {
+      fbActiveProcessTitle.textContent = 'Dynamic Form: ' + currentWfName;
+    }
+
+    if (fbToggleEnabled) {
+      fbToggleEnabled.checked = activeFormSchema.enabled !== false;
+    }
+
+    if (fbStatusTag) {
+      if (activeFormSchema.enabled !== false) {
+        fbStatusTag.className = 'fb-status-tag';
+        fbStatusTag.textContent = 'Dynamic Form Active';
+      } else {
+        fbStatusTag.className = 'fb-status-tag disabled';
+        fbStatusTag.textContent = 'Form Inactive (Standard Default)';
+      }
+    }
+
+    if (fbFormTitle) {
+      fbFormTitle.value = activeFormSchema.title || (currentWfName + ' Request Form');
+    }
+    if (fbFormDesc) {
+      fbFormDesc.value = activeFormSchema.description || '';
+    }
+
+    renderFieldsList();
+    renderPreviewForm();
+  }
+
+  function renderFieldsList() {
+    if (!fbFieldsList) return;
+    fbFieldsList.innerHTML = '';
+
+    var fields = activeFormSchema.fields || [];
+    if (fields.length === 0) {
+      fbFieldsList.innerHTML = `
+        <div class="fb-empty-state">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8" style="margin:0 auto 10px; display:block;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+          <p style="font-weight:700; color:#334155; margin:0 0 4px;">No Dynamic Fields Added Yet</p>
+          <p style="font-size:12.5px; color:#64748b; margin:0 0 16px;">This flow currently has no custom fields. Choose a preset template above or create your own fields.</p>
+          <button type="button" class="wf-btn wf-btn-primary" id="btn-empty-add-field" style="margin:0 auto;">
+            + Add First Field
+          </button>
+        </div>
+      `;
+      var emptyBtn = document.getElementById('btn-empty-add-field');
+      if (emptyBtn) emptyBtn.addEventListener('click', openAddFieldModal);
+      return;
+    }
+
+    var typeIcons = {
+      text: '🔤 Text',
+      number: '🔢 Number',
+      date: '📅 Date',
+      textarea: '📝 Textarea',
+      select: '🔽 Dropdown',
+      checkbox: '☑ Checkbox',
+      time: '⏰ Time',
+      email: '✉ Email',
+      tel: '📞 Phone'
+    };
+
+    fields.forEach(function (f, idx) {
+      var card = document.createElement('div');
+      card.className = 'fb-field-card';
+      card.dataset.fieldId = f.id;
+
+      var typeDisplay = typeIcons[f.type] || f.type;
+      var isReq = Boolean(f.required);
+      var widthDisplay = f.width === 'full' ? 'Full Width (100%)' : 'Half Width (50%)';
+
+      var optionsHtml = '';
+      if (f.type === 'select' && f.options && f.options.length > 0) {
+        optionsHtml = `<div style="font-size:11.5px; color:#64748b; margin-top:2px;">Options: <em>${f.options.slice(0, 3).join(', ')}${f.options.length > 3 ? '...' : ''} (${f.options.length})</em></div>`;
+      }
+
+      card.innerHTML = `
+        <div class="fb-field-left">
+          <span class="fb-field-order-badge">${idx + 1}</span>
+          <div class="fb-field-info">
+            <div class="fb-field-title-line">
+              <span class="fb-field-label">${escapeHtml(f.label)}</span>
+              <code class="fb-field-key">${escapeHtml(f.name || f.id)}</code>
+            </div>
+            <div class="fb-field-badges">
+              <span class="fb-type-tag">${typeDisplay}</span>
+              <span class="fb-req-tag ${isReq ? 'required' : 'optional'}">${isReq ? '★ Required' : 'Optional'}</span>
+              <span class="fb-width-tag">${widthDisplay}</span>
+            </div>
+            ${optionsHtml}
+          </div>
+        </div>
+        <div class="fb-field-actions">
+          <button type="button" class="fb-icon-btn" title="Move Up" data-act="move-up" data-idx="${idx}" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+          </button>
+          <button type="button" class="fb-icon-btn" title="Move Down" data-act="move-down" data-idx="${idx}" ${idx === fields.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <button type="button" class="fb-icon-btn" title="Edit Field" data-act="edit" data-id="${f.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+          </button>
+          <button type="button" class="fb-icon-btn danger" title="Delete Field" data-act="delete" data-id="${f.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      `;
+
+      fbFieldsList.appendChild(card);
+    });
+  }
+
+  function renderPreviewForm() {
+    if (!fbPreviewFieldsGrid) return;
+    fbPreviewFieldsGrid.innerHTML = '';
+
+    var currentWfName = (activeFlowData && activeFlowData.name) || (WORKFLOWS.find(w => w.id === currentWorkflowId) || {}).name || 'Process';
+    if (fbPreviewTitle) {
+      fbPreviewTitle.textContent = activeFormSchema.title || (currentWfName + ' Request Form');
+    }
+    if (fbPreviewDesc) {
+      fbPreviewDesc.textContent = activeFormSchema.description || 'Fill in the information below to submit for multi-stage departmental authorization.';
+    }
+
+    var fields = activeFormSchema.fields || [];
+    if (fields.length === 0) {
+      fbPreviewFieldsGrid.innerHTML = `
+        <div class="full-span" style="text-align:center; padding:30px 10px; color:#94a3b8; font-size:13px;">
+          No fields in this form. Add fields on the left to see live preview here.
+        </div>
+      `;
+      return;
+    }
+
+    fields.forEach(function (f) {
+      var group = document.createElement('div');
+      group.className = 'crud-form-group ' + (f.width === 'full' ? 'full-span' : '');
+
+      var isReq = Boolean(f.required);
+      var reqStar = isReq ? ' <span class="required" style="color:#dc2626;">*</span>' : '';
+      var helpHtml = f.help_text ? `<small style="display:block; color:#64748b; font-size:11.5px; margin-top:3px;">${escapeHtml(f.help_text)}</small>` : '';
+
+      var labelHtml = `<label class="crud-form-label" style="display:block; font-weight:700; font-size:13px; margin-bottom:4px; color:#1e293b;">${escapeHtml(f.label)}${reqStar}</label>`;
+
+      var inputHtml = '';
+      var ph = escapeHtml(f.placeholder || '');
+      var defVal = escapeHtml(f.default_value || '');
+
+      switch (f.type) {
+        case 'textarea':
+          inputHtml = `<textarea class="crud-form-input" rows="3" placeholder="${ph}" style="width:100%; height:auto; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">${defVal}</textarea>`;
+          break;
+        case 'select':
+          var opts = (f.options || []).map(function (opt) {
+            var selected = opt === f.default_value ? 'selected' : '';
+            return `<option value="${escapeHtml(opt)}" ${selected}>${escapeHtml(opt)}</option>`;
+          }).join('');
+          inputHtml = `<select class="crud-form-select" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">${opts || '<option>-- Select an option --</option>'}</select>`;
+          break;
+        case 'checkbox':
+          var checked = (f.default_value === 'true' || f.default_value === true) ? 'checked' : '';
+          labelHtml = '';
+          inputHtml = `
+            <label class="fb-toggle-label" style="margin-top:6px; display:inline-flex; align-items:center; gap:8px;">
+              <input type="checkbox" ${checked}>
+              <span class="fb-toggle-slider"></span>
+              <span style="font-size:13px; font-weight:700; color:#1e293b;">${escapeHtml(f.label)}${reqStar}</span>
+            </label>
+          `;
+          break;
+        case 'number':
+          var minAttr = f.min !== undefined && f.min !== '' ? `min="${f.min}"` : '';
+          var maxAttr = f.max !== undefined && f.max !== '' ? `max="${f.max}"` : '';
+          inputHtml = `<input type="number" class="crud-form-input" placeholder="${ph}" value="${defVal}" ${minAttr} ${maxAttr} style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">`;
+          break;
+        case 'date':
+          inputHtml = `<input type="date" class="crud-form-input" value="${defVal}" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">`;
+          break;
+        case 'time':
+          inputHtml = `<input type="time" class="crud-form-input" value="${defVal}" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">`;
+          break;
+        case 'email':
+          inputHtml = `<input type="email" class="crud-form-input" placeholder="${ph || 'name@example.com'}" value="${defVal}" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">`;
+          break;
+        case 'tel':
+          inputHtml = `<input type="tel" class="crud-form-input" placeholder="${ph || '+91 9876543210'}" value="${defVal}" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">`;
+          break;
+        default: // text
+          inputHtml = `<input type="text" class="crud-form-input" placeholder="${ph}" value="${defVal}" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">`;
+          break;
+      }
+
+      group.innerHTML = labelHtml + inputHtml + helpHtml;
+      fbPreviewFieldsGrid.appendChild(group);
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function openAddFieldModal() {
+    normalizeSchemaFields();
+    formFieldEditor.reset();
+    feFieldId.value = '';
+    feIsEdit.value = 'false';
+    feType.value = 'text';
+    feRequired.value = 'true';
+    feWidth.value = 'half';
+    feErrorMsg.style.display = 'none';
+    feOptionsContainer.style.display = 'none';
+    feMinmaxContainer.style.display = 'none';
+    document.getElementById('field-editor-modal-title').textContent = 'Add Dynamic Field';
+    modalFieldEditor.classList.add('open');
+    modalFieldEditor.setAttribute('aria-hidden', 'false');
+    setTimeout(function() { if (feLabel) feLabel.focus(); }, 60);
+  }
+
+  function openEditFieldModal(fieldId) {
+    normalizeSchemaFields();
+    var field = (activeFormSchema.fields || []).find(f =>
+      (f.id && String(f.id) === String(fieldId)) ||
+      (f.name && String(f.name) === String(fieldId))
+    );
+    if (!field) {
+      console.warn('Field not found for id:', fieldId);
+      Portal.toast('Could not find field to edit.', 'warning');
+      return;
+    }
+
+    formFieldEditor.reset();
+    feFieldId.value = field.id || field.name || '';
+    feIsEdit.value = 'true';
+    feErrorMsg.style.display = 'none';
+    document.getElementById('field-editor-modal-title').textContent = 'Edit Dynamic Field: ' + (field.label || field.name);
+
+    feLabel.value = field.label || '';
+    feName.value = field.name || field.id || '';
+    feType.value = field.type || 'text';
+    feRequired.value = field.required ? 'true' : 'false';
+    feWidth.value = field.width || 'half';
+    fePlaceholder.value = field.placeholder || '';
+    feHelpText.value = field.help_text || '';
+    feDefault.value = field.default_value !== undefined && field.default_value !== null ? field.default_value : '';
+    feMin.value = field.min !== undefined && field.min !== null ? field.min : '';
+    feMax.value = field.max !== undefined && field.max !== null ? field.max : '';
+
+    if (field.type === 'select') {
+      feOptionsContainer.style.display = 'block';
+      feOptions.value = Array.isArray(field.options) ? field.options.join('\n') : (field.options || '');
+    } else {
+      feOptionsContainer.style.display = 'none';
+    }
+
+    if (field.type === 'number') {
+      feMinmaxContainer.style.display = 'block';
+    } else {
+      feMinmaxContainer.style.display = 'none';
+    }
+
+    modalFieldEditor.classList.add('open');
+    modalFieldEditor.setAttribute('aria-hidden', 'false');
+    setTimeout(function() { if (feLabel) feLabel.focus(); }, 60);
+  }
+
+  async function deleteField(fieldId) {
+    normalizeSchemaFields();
+    var field = (activeFormSchema.fields || []).find(f =>
+      (f.id && String(f.id) === String(fieldId)) ||
+      (f.name && String(f.name) === String(fieldId))
+    );
+    var label = field ? (field.label || field.name) : 'this field';
+    var confirmed = await Portal.confirm({
+      title: 'Delete Field?',
+      message: `Are you sure you want to delete the field "${label}"?`,
+      confirmText: 'Delete Field',
+      danger: true
+    });
+    if (!confirmed) return;
+
+    activeFormSchema.fields = (activeFormSchema.fields || []).filter(f =>
+      !( (f.id && String(f.id) === String(fieldId)) || (f.name && String(f.name) === String(fieldId)) )
+    );
+    markDirty();
+    renderFormBuilder();
+    Portal.toast(`Field "${label}" removed.`, 'info');
+  }
+
+  function moveField(idx, direction) {
+    var fields = activeFormSchema.fields;
+    var targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= fields.length) return;
+    var temp = fields[idx];
+    fields[idx] = fields[targetIdx];
+    fields[targetIdx] = temp;
+    markDirty();
+    renderFormBuilder();
+  }
+
+  async function saveFormSchemaDirect() {
+    if (!currentWorkflowId) return;
+    setSaveStatus('saving', 'Saving form configuration...');
+    try {
+      var res = await fetch(`/admin/approval-workflows/${currentWorkflowId}/form-schema`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ form_schema: activeFormSchema })
+      });
+      var data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to save form');
+      }
+      setSaveStatus('saved', 'Form configuration saved');
+      Portal.toast('Dynamic form configuration saved successfully!', 'success');
+      isDirty = false;
+    } catch (err) {
+      console.error(err);
+      Portal.toast('Failed to save form: ' + err.message, 'error');
+      setSaveStatus('unsaved', 'Error saving form');
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -1462,6 +2430,20 @@
     document.getElementById('assign-modal-search').addEventListener('input', function () {
       renderAssignModalList(this.value);
     });
+
+    // Modal: Source Pills
+    const modalPillsContainer = document.getElementById('modal-source-pills');
+    if (modalPillsContainer) {
+      modalPillsContainer.querySelectorAll('.source-pill').forEach(pill => {
+        pill.addEventListener('click', function () {
+          modalPillsContainer.querySelectorAll('.source-pill').forEach(p => p.classList.remove('active'));
+          this.classList.add('active');
+          modalActiveSource = this.dataset.source;
+          renderAssignModalList(document.getElementById('assign-modal-search').value);
+        });
+      });
+    }
+
     document.getElementById('modal-assign-close').addEventListener('click', () => {
       modalAssign.classList.remove('open');
     });
@@ -1598,6 +2580,286 @@
         Portal.toast('Delete failed: ' + err.message, 'error');
       }
     });
+
+    // -------------------------------------------------------------------------
+    // Form Builder Events
+    // -------------------------------------------------------------------------
+    if (btnModePipeline) {
+      btnModePipeline.addEventListener('click', function () {
+        setDesignerMode('pipeline');
+      });
+    }
+    if (btnModeFormBuilder) {
+      btnModeFormBuilder.addEventListener('click', function () {
+        setDesignerMode('form-builder');
+      });
+    }
+
+    var topSwitchBtn = document.getElementById('btn-top-switch-mode');
+    if (topSwitchBtn) {
+      topSwitchBtn.addEventListener('click', function () {
+        setDesignerMode(currentDesignerMode === 'form-builder' ? 'pipeline' : 'form-builder');
+      });
+    }
+
+    var tabPipeline = document.getElementById('admin-tab-pipeline');
+    if (tabPipeline) {
+      tabPipeline.addEventListener('click', function (e) {
+        e.preventDefault();
+        setDesignerMode('pipeline');
+      });
+    }
+
+    var tabFormBuilder = document.getElementById('admin-tab-form-builder');
+    if (tabFormBuilder) {
+      tabFormBuilder.addEventListener('click', function (e) {
+        e.preventDefault();
+        setDesignerMode('form-builder');
+      });
+    }
+
+    if (btnAddFormField) {
+      btnAddFormField.addEventListener('click', openAddFieldModal);
+    }
+    if (btnAddFieldLink) {
+      btnAddFieldLink.addEventListener('click', openAddFieldModal);
+    }
+
+    if (btnSaveFormConfig) {
+      btnSaveFormConfig.addEventListener('click', saveFormSchemaDirect);
+    }
+
+    if (fbToggleEnabled) {
+      fbToggleEnabled.addEventListener('change', function () {
+        activeFormSchema.enabled = this.checked;
+        markDirty();
+        renderFormBuilder();
+        Portal.toast(this.checked ? 'Dynamic form enabled for this process.' : 'Dynamic form disabled (using standard form).', 'info');
+      });
+    }
+
+    if (fbFormTitle) {
+      fbFormTitle.addEventListener('input', function () {
+        activeFormSchema.title = this.value;
+        markDirty();
+        renderPreviewForm();
+      });
+    }
+    if (fbFormDesc) {
+      fbFormDesc.addEventListener('input', function () {
+        activeFormSchema.description = this.value;
+        markDirty();
+        renderPreviewForm();
+      });
+    }
+
+    if (btnApplyTemplate) {
+      btnApplyTemplate.addEventListener('click', async function () {
+        var key = fbTemplateSelect.value;
+        if (!key) return;
+        var tmpl = PRESET_TEMPLATES[key];
+        if (!tmpl) return;
+
+        var confirmed = await Portal.confirm({
+          title: 'Apply Preset Template?',
+          message: 'This will replace current form fields with the selected template fields. Continue?',
+          confirmText: 'Apply Template',
+          danger: true
+        });
+        if (!confirmed) return;
+
+        activeFormSchema = JSON.parse(JSON.stringify(tmpl));
+        if (!activeFormSchema.title && activeFlowData) {
+          activeFormSchema.title = activeFlowData.name + ' Request Form';
+        }
+        markDirty();
+        renderFormBuilder();
+        Portal.toast('Preset template applied! Remember to click Save Form.', 'success');
+      });
+    }
+
+    if (modalFieldEditorClose) {
+      modalFieldEditorClose.addEventListener('click', function () {
+        modalFieldEditor.classList.remove('open');
+        modalFieldEditor.setAttribute('aria-hidden', 'true');
+      });
+    }
+    if (modalFieldEditorCancel) {
+      modalFieldEditorCancel.addEventListener('click', function () {
+        modalFieldEditor.classList.remove('open');
+        modalFieldEditor.setAttribute('aria-hidden', 'true');
+      });
+    }
+    if (modalFieldEditor) {
+      modalFieldEditor.addEventListener('click', function (e) {
+        if (e.target === modalFieldEditor) {
+          modalFieldEditor.classList.remove('open');
+          modalFieldEditor.setAttribute('aria-hidden', 'true');
+        }
+      });
+    }
+
+    if (feType) {
+      feType.addEventListener('change', function () {
+        if (feOptionsContainer) feOptionsContainer.style.display = this.value === 'select' ? 'block' : 'none';
+        if (feMinmaxContainer) feMinmaxContainer.style.display = this.value === 'number' ? 'block' : 'none';
+      });
+    }
+
+    if (feLabel) {
+      feLabel.addEventListener('input', function () {
+        if (feIsEdit.value !== 'true') {
+          var slug = this.value.trim().toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '');
+          feName.value = slug;
+        }
+      });
+    }
+
+    if (formFieldEditor) {
+      formFieldEditor.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var label = feLabel.value.trim();
+        var rawName = feName.value.trim();
+        if (!rawName && label) {
+          rawName = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        }
+        var name = rawName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        var type = feType.value;
+        var required = feRequired.value === 'true';
+        var width = feWidth.value;
+        var placeholder = fePlaceholder.value.trim();
+        var helpText = feHelpText.value.trim();
+        var defVal = feDefault.value.trim();
+        var isEdit = feIsEdit.value === 'true';
+        var fieldId = feFieldId.value;
+
+        if (!label || !name) {
+          feErrorMsg.textContent = 'Label and identifier key are required.';
+          feErrorMsg.style.display = 'block';
+          return;
+        }
+
+        var options = [];
+        if (type === 'select') {
+          var rawOpts = feOptions.value.trim();
+          if (!rawOpts) {
+            feErrorMsg.textContent = 'Please enter at least one option for the dropdown.';
+            feErrorMsg.style.display = 'block';
+            return;
+          }
+          options = rawOpts.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+          if (options.length === 0) {
+            feErrorMsg.textContent = 'Please provide valid options for the dropdown.';
+            feErrorMsg.style.display = 'block';
+            return;
+          }
+        }
+
+        normalizeSchemaFields();
+        var existingFields = activeFormSchema.fields || [];
+
+        // Check for duplicate key (excluding self if editing)
+        var dup = existingFields.find(function (f) {
+          var isSelf = isEdit && (
+            (f.id && String(f.id) === String(fieldId)) ||
+            (f.name && String(f.name) === String(fieldId))
+          );
+          if (isSelf) return false;
+          return f.name === name || f.id === name;
+        });
+
+        if (dup) {
+          feErrorMsg.textContent = `A field with key "${name}" already exists. Please choose a unique key.`;
+          feErrorMsg.style.display = 'block';
+          return;
+        }
+
+        if (isEdit) {
+          var field = existingFields.find(function (f) {
+            return (f.id && String(f.id) === String(fieldId)) ||
+                   (f.name && String(f.name) === String(fieldId));
+          });
+          if (field) {
+            field.label = label;
+            field.name = name;
+            field.type = type;
+            field.required = required;
+            field.width = width;
+            field.placeholder = placeholder;
+            field.help_text = helpText;
+            field.default_value = defVal;
+            field.options = options;
+            if (type === 'number') {
+              field.min = feMin.value !== '' ? Number(feMin.value) : undefined;
+              field.max = feMax.value !== '' ? Number(feMax.value) : undefined;
+            } else {
+              delete field.min;
+              delete field.max;
+            }
+          } else {
+            var updatedField = {
+              id: fieldId || ('f_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6)),
+              name: name,
+              label: label,
+              type: type,
+              required: required,
+              width: width,
+              placeholder: placeholder,
+              help_text: helpText,
+              default_value: defVal,
+              options: options
+            };
+            if (type === 'number') {
+              if (feMin.value !== '') updatedField.min = Number(feMin.value);
+              if (feMax.value !== '') updatedField.max = Number(feMax.value);
+            }
+            existingFields.push(updatedField);
+          }
+        } else {
+          var newField = {
+            id: 'f_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
+            name: name,
+            label: label,
+            type: type,
+            required: required,
+            width: width,
+            placeholder: placeholder,
+            help_text: helpText,
+            default_value: defVal,
+            options: options
+          };
+          if (type === 'number') {
+            if (feMin.value !== '') newField.min = Number(feMin.value);
+            if (feMax.value !== '') newField.max = Number(feMax.value);
+          }
+          existingFields.push(newField);
+        }
+
+        activeFormSchema.fields = existingFields;
+        modalFieldEditor.classList.remove('open');
+        modalFieldEditor.setAttribute('aria-hidden', 'true');
+        markDirty();
+        renderFormBuilder();
+        Portal.toast(`Field "${label}" ${isEdit ? 'updated' : 'added'} successfully!`, 'success');
+      });
+    }
+
+    if (fbFieldsList) {
+      fbFieldsList.addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-act]');
+        if (!btn) return;
+        var act = btn.dataset.act;
+        var id = btn.dataset.id;
+        var idx = Number(btn.dataset.idx);
+
+        if (act === 'edit') openEditFieldModal(id);
+        else if (act === 'delete') deleteField(id);
+        else if (act === 'move-up') moveField(idx, -1);
+        else if (act === 'move-down') moveField(idx, 1);
+      });
+    }
 
     // Auto-warn on page unload if changes are unsaved
     window.addEventListener('beforeunload', function (e) {

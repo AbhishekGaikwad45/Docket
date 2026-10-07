@@ -142,6 +142,68 @@ def init_db_defaults():
                 default_wf.flow_data = json.dumps(flow_data)
                 session.commit()
 
+            # Ensure Vehicle Booking workflow exists
+            veh_wf = session.query(ApprovalWorkflow).filter(
+                (ApprovalWorkflow.code == "vehicle_booking") | (ApprovalWorkflow.name.ilike("%vehicle%"))
+            ).first()
+            if not veh_wf:
+                veh_wf = ApprovalWorkflow(
+                    name="Vehicle Booking",
+                    code="vehicle_booking",
+                    description="Official vehicle requisition and driver allocation workflow.",
+                    is_active=True,
+                )
+                veh_wf.form_schema = json.dumps({
+                    "title": "Vehicle & Transport Application Form",
+                    "description": "Please specify journey details, passenger count, and reporting requirements.",
+                    "enabled": True,
+                    "fields": [
+                        {"name": "passenger_name", "label": "Passenger / Guest Name", "type": "text", "required": True, "width": "half", "placeholder": "Full name of traveler"},
+                        {"name": "contact_no", "label": "Contact / Mobile Number", "type": "tel", "required": True, "width": "half", "placeholder": "10-digit mobile number"},
+                        {"name": "travel_date", "label": "Date of Travel", "type": "date", "required": True, "width": "half"},
+                        {"name": "reporting_time", "label": "Reporting / Pickup Time", "type": "time", "required": True, "width": "half"},
+                        {"name": "pickup_location", "label": "Pickup Location / Reporting Point", "type": "text", "required": True, "width": "half", "placeholder": "e.g. JSW Dharamtar Guest House"},
+                        {"name": "destination", "label": "Destination / Drop Location", "type": "text", "required": True, "width": "half", "placeholder": "e.g. Mumbai Airport / Alibaug"},
+                        {"name": "num_passengers", "label": "Number of Passengers", "type": "number", "required": True, "width": "half", "placeholder": "e.g. 2", "min": 1, "max": 10},
+                        {"name": "vehicle_preference", "label": "Vehicle Preference", "type": "select", "required": False, "width": "half", "options": ["Sedan (Dzire / Etios)", "SUV (Innova / Ertiga)", "Utility (Bolero / Pickup)", "Any Available"]},
+                        {"name": "purpose", "label": "Official Business Justification", "type": "textarea", "required": True, "width": "full", "placeholder": "Official visit justification..."}
+                    ]
+                })
+                session.add(veh_wf)
+                session.flush()
+
+                v_step1 = ApprovalWorkflowStep(
+                    workflow_id=veh_wf.id,
+                    step_order=1,
+                    step_name="Final Approval (Unit Head)",
+                    is_final=True,
+                    parent_step_id=None
+                )
+                session.add(v_step1)
+                session.flush()
+
+                v_step2 = ApprovalWorkflowStep(
+                    workflow_id=veh_wf.id,
+                    step_order=2,
+                    step_name="Department Head Review",
+                    is_final=False,
+                    parent_step_id=v_step1.id
+                )
+                session.add(v_step2)
+                session.flush()
+
+                v_flow_data = {
+                    "workflow_id": veh_wf.id,
+                    "name": veh_wf.name,
+                    "code": veh_wf.code,
+                    "stages": [
+                        {"id": f"stage-{v_step1.id}", "db_id": v_step1.id, "name": "Final Approval (Unit Head)", "is_final": True, "order": 1, "approvers": []},
+                        {"id": f"stage-{v_step2.id}", "db_id": v_step2.id, "name": "Department Head Review", "is_final": False, "order": 2, "parent_id": f"stage-{v_step1.id}", "approvers": []}
+                    ]
+                }
+                veh_wf.flow_data = json.dumps(v_flow_data)
+                session.commit()
+
     except Exception:
         session.rollback()
     finally:

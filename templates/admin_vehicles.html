@@ -1,0 +1,862 @@
+{% extends "base.html" %}
+{% block title %}Vehicle Allocation &amp; Driver Dispatch - Admin Portal{% endblock %}
+{% set active = 'admin_vehicles' %}
+
+{% block content %}
+<!-- Admin Navigation Tabs -->
+<nav class="admin-nav-tabs" aria-label="Admin Sections">
+  <a href="{{ url_for('admin_module') }}" class="admin-nav-tab">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </svg>
+    <span>User Management</span>
+    <span class="admin-tab-count">{{ employee_count or 0 }}</span>
+  </a>
+
+  <a href="{{ url_for('admin_approvals') }}" class="admin-nav-tab">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 11 12 14 22 4"></polyline>
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+    </svg>
+    <span>Process Approvals</span>
+    {% if pending_approvals_count and pending_approvals_count > 0 %}
+      <span class="admin-tab-badge badge-attention">{{ pending_approvals_count }} Pending</span>
+    {% else %}
+      <span class="admin-tab-badge">Approvals</span>
+    {% endif %}
+  </a>
+
+  <a href="{{ url_for('admin_vehicle_management') }}" class="admin-nav-tab active">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="10" width="20" height="8" rx="2"></rect>
+      <path d="M5 10l2-5h10l2 5"></path>
+      <circle cx="7" cy="18" r="2"></circle>
+      <circle cx="17" cy="18" r="2"></circle>
+    </svg>
+    <span>Vehicle Allocation</span>
+    {% if unallocated_vehicle_count and unallocated_vehicle_count > 0 %}
+      <span class="admin-tab-badge badge-attention" style="background:#ea580c; color:#fff;">{{ unallocated_vehicle_count }} Need Car</span>
+    {% else %}
+      <span class="admin-tab-badge" style="background:#059669; color:#fff;">Transport</span>
+    {% endif %}
+  </a>
+
+  <a href="{{ url_for('approval_management') }}" class="admin-nav-tab">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="3" y1="9" x2="21" y2="9"></line>
+      <line x1="9" y1="21" x2="9" y2="9"></line>
+    </svg>
+    <span>Approval Pipeline</span>
+  </a>
+
+  <a href="{{ url_for('approval_management') }}?mode=form-builder" class="admin-nav-tab">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+      <polyline points="10 9 9 9 8 9"></polyline>
+    </svg>
+    <span>Dynamic Form Builder</span>
+    <span class="admin-tab-badge" style="background:#2563eb; color:#fff;">Form Designer</span>
+  </a>
+</nav>
+
+<!-- Page Header Row -->
+<div class="user-mgmt-header-row" style="margin-bottom:18px;">
+  <div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span style="font-size:26px;">🚗</span>
+      <h1 class="page-title" style="margin:0;">Vehicle Allocation &amp; Driver Dispatch Desk</h1>
+    </div>
+    <p class="page-sub" style="margin:4px 0 0 0;">
+      Fill in car, driver, and travel particulars for approved vehicle bookings. On submit, an email is dispatched directly from <strong>dppl.admin@jsw.in</strong> to the passenger.
+    </p>
+  </div>
+</div>
+
+<!-- Metrics Overview Cards -->
+<div class="metrics-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:18px;">
+  <!-- Card 1: Booking Alerts Received (Action Needed) -->
+  <div class="metric-card" style="background:#ffffff; border:1px solid {% if unallocated_vehicle_count > 0 %}#fdba74{% else %}#e2e8f0{% endif %}; border-left:4px solid {% if unallocated_vehicle_count > 0 %}#ea580c{% else %}#94a3b8{% endif %}; border-radius:10px; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:#c2410c;">Booking Alerts Received (Need Car)</div>
+      <span style="background:#ffedd5; color:#c2410c; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">Step 1 Complete</span>
+    </div>
+    <div style="font-size:30px; font-weight:800; color:#9a3412; margin:6px 0 2px 0;">{{ needs_allocation|length }}</div>
+    <div style="font-size:12px; color:#475569; line-height:1.4;">
+      Email alerts received at <strong>dppl.admin@jsw.in</strong>.<br>
+      <span style="color:#c2410c; font-weight:600;">⚠️ Awaiting vehicle allocation below</span>
+    </div>
+  </div>
+
+  <!-- Card 2: Dispatched to Passenger -->
+  <div class="metric-card" style="background:#ffffff; border:1px solid {% if allocated|length > 0 %}#bbf7d0{% else %}#e2e8f0{% endif %}; border-left:4px solid {% if allocated|length > 0 %}#16a34a{% else %}#cbd5e1{% endif %}; border-radius:10px; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:#15803d;">Dispatched to Passenger</div>
+      <span style="background:{% if allocated|length > 0 %}#dcfce7{% else %}#f1f5f9{% endif %}; color:{% if allocated|length > 0 %}#15803d{% else %}#64748b{% endif %}; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">Step 2 Action</span>
+    </div>
+    <div style="font-size:30px; font-weight:800; color:{% if allocated|length > 0 %}#166534{% else %}#64748b{% endif %}; margin:6px 0 2px 0;">{{ allocated|length }}</div>
+    <div style="font-size:12px; color:#475569; line-height:1.4;">
+      {% if allocated|length == 0 %}
+        <strong>0 Dispatched so far.</strong> Enter driver details below &amp; click <em>"Save &amp; Send Email"</em> to notify passenger.
+      {% else %}
+        Car &amp; driver details confirmed and emailed to passenger.
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Card 3: Total Vehicle Requisitions -->
+  <div class="metric-card" style="background:#ffffff; border:1px solid #bfdbfe; border-left:4px solid #2563eb; border-radius:10px; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:#1d4ed8;">Total Vehicle Requisitions</div>
+      <span style="background:#eff6ff; color:#1d4ed8; font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">All Time</span>
+    </div>
+    <div style="font-size:30px; font-weight:800; color:#1e3a8a; margin:6px 0 2px 0;">{{ all_requests|length }}</div>
+    <div style="font-size:12px; color:#64748b; line-height:1.4;">All vehicle booking submissions in the system</div>
+  </div>
+</div>
+
+<!-- Workflow Explainer Ribbon -->
+<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 18px; margin-bottom:22px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <span style="font-size:20px;">ℹ️</span>
+    <div style="font-size:12.5px; color:#334155; line-height:1.45;">
+      <strong>How this desk works:</strong>
+      When a vehicle request is approved, an email is sent to <strong>dppl.admin@jsw.in</strong> (shown in <em>Booking Alerts: {{ needs_allocation|length }}</em>).
+      Once you fill in the car &amp; driver details below and click <strong>"Save &amp; Send Email to Passenger"</strong>, the second card (<em>Dispatched to Passenger</em>) will increase from <strong>0</strong> to <strong>1</strong>.
+    </div>
+  </div>
+  {% if needs_allocation|length > 0 %}
+    <span style="background:#ea580c; color:#ffffff; font-size:11.5px; font-weight:700; padding:5px 12px; border-radius:20px; white-space:nowrap;">
+      👉 {{ needs_allocation|length }} Car(s) Ready to Dispatch
+    </span>
+  {% endif %}
+</div>
+
+<!-- Main 2-Column Split Workspace -->
+<div style="display:grid; grid-template-columns:minmax(320px, 380px) 1fr; gap:22px; align-items:start;">
+
+  <!-- =========================================================================
+       LEFT COLUMN: REQUEST QUEUE & SELECTOR
+       ========================================================================= -->
+  <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,0.03);">
+    <!-- Queue Header & Filters -->
+    <div style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0; font-size:15px; font-weight:800; color:#1e293b;">Vehicle Requisitions</h3>
+        <span style="font-size:12px; color:#64748b; font-weight:600;">{{ all_requests|length }} total</span>
+      </div>
+
+      <!-- Quick Filter Tabs -->
+      <div style="display:flex; gap:6px; margin-bottom:10px;">
+        <button type="button" class="veh-tab-btn active" data-filter="needs_allocation" style="flex:1; padding:6px 8px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid #ea580c; background:#fff7ed; color:#c2410c; cursor:pointer;">
+          Pending Allocation ({{ needs_allocation|length }})
+        </button>
+        <button type="button" class="veh-tab-btn" data-filter="allocated" style="flex:1; padding:6px 8px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid #cbd5e1; background:#ffffff; color:#475569; cursor:pointer;">
+          Dispatched ({{ allocated|length }})
+        </button>
+        <button type="button" class="veh-tab-btn" data-filter="all" style="flex:1; padding:6px 8px; border-radius:6px; font-size:11px; font-weight:700; border:1px solid #cbd5e1; background:#ffffff; color:#475569; cursor:pointer;">
+          All ({{ all_requests|length }})
+        </button>
+      </div>
+
+      <!-- Search Input -->
+      <div style="position:relative;">
+        <input type="text" id="veh-req-search" placeholder="Search ID, passenger, dept..." style="width:100%; height:34px; padding:6px 10px 6px 30px; font-size:12.5px; border:1px solid #cbd5e1; border-radius:6px; box-sizing:border-box;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute; left:9px; top:10px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      </div>
+    </div>
+
+    <!-- Request Cards Container -->
+    <div id="veh-req-list" style="max-height:680px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-right:4px;">
+      {% if all_requests %}
+        {% for r in all_requests %}
+          {% set is_allocated = r.details and r.details.vehicle_allocation %}
+          {% set item_cat = 'allocated' if is_allocated else ('needs_allocation' if r.status == 'approved' else 'pending') %}
+          <div class="veh-req-card {% if selected_req and selected_req.id == r.id %}selected{% endif %}"
+               data-req-id="{{ r.id }}"
+               data-cat="{{ item_cat }}"
+               data-search="{{ (r.id ~ ' ' ~ r.applicant_name ~ ' ' ~ r.department ~ ' ' ~ r.purpose)|lower }}"
+               style="border:1px solid {% if selected_req and selected_req.id == r.id %}#0284c7{% elif is_allocated %}#e2e8f0{% elif r.status == 'approved' %}#fed7aa{% else %}#e2e8f0{% endif %};
+                      background:{% if selected_req and selected_req.id == r.id %}#f0f9ff{% elif is_allocated %}#ffffff{% elif r.status == 'approved' %}#fffbf5{% else %}#ffffff{% endif %};
+                      border-left:4px solid {% if is_allocated %}#16a34a{% elif r.status == 'approved' %}#ea580c{% else %}#94a3b8{% endif %};
+                      border-radius:8px; padding:12px; cursor:pointer; transition:all .15s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+              <span style="font-weight:800; font-size:13px; color:#0369a1;">{{ r.id }}</span>
+              {% if is_allocated %}
+                <span style="background:#dcfce7; color:#15803d; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:12px;">✓ Car Arranged</span>
+              {% elif r.status == 'approved' %}
+                <span style="background:#ffedd5; color:#c2410c; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:12px;">⚠️ Needs Car</span>
+              {% else %}
+                <span style="background:#f1f5f9; color:#64748b; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:12px;">Pending</span>
+              {% endif %}
+            </div>
+
+            <div style="font-size:13px; font-weight:700; color:#1e293b; margin-bottom:2px;">
+              {{ r.applicant_name }}
+              <span style="font-size:11.5px; font-weight:500; color:#64748b;">({{ r.department or 'N/A' }})</span>
+            </div>
+
+            <div style="font-size:12px; color:#475569; display:flex; align-items:center; gap:6px; margin-top:4px;">
+              <span>📅</span>
+              <span>{{ r.start_date }}{% if r.end_date and r.end_date != r.start_date %} to {{ r.end_date }}{% endif %}</span>
+            </div>
+
+            {% if is_allocated and r.details.vehicle_allocation.fields %}
+              {% set veh_no = (r.details.vehicle_allocation.fields | selectattr('name', 'equalto', 'vehicle_number') | map(attribute='value') | first) %}
+              {% if veh_no %}
+                <div style="margin-top:6px; font-size:11.5px; color:#047857; font-weight:700; background:#f0fdf4; padding:3px 6px; border-radius:4px;">
+                  🚗 {{ veh_no }}
+                </div>
+              {% endif %}
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center; padding:30px 10px; color:#94a3b8; font-size:13px;">
+          No vehicle requisitions found.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       RIGHT COLUMN: THE VEHICLE ALLOCATION & EMAIL DISPATCH FORM
+       ========================================================================= -->
+  <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:22px 26px; box-shadow:0 1px 4px rgba(0,0,0,0.03);">
+
+    <div id="veh-form-empty-state" style="{% if selected_req %}display:none;{% else %}display:block;{% endif %} text-align:center; padding:60px 20px;">
+      <span style="font-size:42px;">🚗</span>
+      <h3 style="font-size:17px; font-weight:800; color:#1e293b; margin:10px 0 6px;">Select a Vehicle Requisition</h3>
+      <p style="font-size:13.5px; color:#64748b; max-width:440px; margin:0 auto;">
+        Click on any approved requisition from the left list to open the car &amp; driver assignment form.
+      </p>
+    </div>
+
+    <div id="veh-form-content" style="{% if selected_req %}display:block;{% else %}display:none;{% endif %}">
+      <!-- Form Header -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <div>
+          <span style="font-size:11px; font-weight:800; color:#0284c7; text-transform:uppercase; letter-spacing:1px;">Vehicle Logistics Desk</span>
+          <h2 style="margin:2px 0 0 0; font-size:20px; font-weight:800; color:#0f172a;" id="veh-view-title">
+            Allocate Vehicle Details &middot; <span id="veh-view-id" style="color:#0284c7;">{{ selected_req.id if selected_req else '' }}</span>
+          </h2>
+        </div>
+        <div id="veh-status-badge-container">
+          {% if selected_req and selected_req.details and selected_req.details.vehicle_allocation %}
+            <span style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px;">
+              ✓ Vehicle Already Allocated
+            </span>
+          {% elif selected_req and selected_req.status == 'approved' %}
+            <span style="background:#fff7ed; color:#ea580c; border:1px solid #fdba74; font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px;">
+              ⚠️ Action Required: Allocate Car
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Requisition Details Summary Ribbon -->
+      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; font-size:13px;">
+          <div>
+            <span style="font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase;">Passenger / Applicant</span>
+            <div style="font-weight:800; color:#0f172a;" id="veh-sum-name">{{ selected_req.applicant_name if selected_req else '—' }}</div>
+            <div style="color:#64748b; font-size:12px;" id="veh-sum-dept">{{ selected_req.department if selected_req else '—' }} &middot; Emp ID: <span id="veh-sum-empid">{{ selected_req.applicant_emp_id if selected_req else '—' }}</span></div>
+          </div>
+          <div>
+            <span style="font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase;">Date of Travel</span>
+            <div style="font-weight:800; color:#0f172a;" id="veh-sum-dates">
+              {{ selected_req.start_date if selected_req else '' }}{% if selected_req and selected_req.end_date and selected_req.end_date != selected_req.start_date %} to {{ selected_req.end_date }}{% endif %}
+            </div>
+            <div style="color:#64748b; font-size:12px;" id="veh-sum-contact">Contact: {{ selected_req.applicant_phone or 'N/A' if selected_req else '—' }}</div>
+          </div>
+          <div>
+            <span style="font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase;">Business Purpose</span>
+            <div style="font-weight:700; color:#1e293b;" id="veh-sum-purpose">{{ selected_req.purpose if selected_req else 'Official Travel' }}</div>
+            <div style="color:#059669; font-weight:600; font-size:12px;">Final Authorized &amp; Approved</div>
+          </div>
+        </div>
+
+        <!-- Passenger Custom Requirements (if any) -->
+        <div id="veh-passenger-reqs-container" style="margin-top:10px; padding-top:10px; border-top:1px solid #dbeafe; font-size:12.5px; color:#1e3a8a;">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <!-- Email Channel Notification Banner -->
+      <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; margin-bottom:14px; display:flex; align-items:center; gap:10px; font-size:12.5px; color:#92400e;">
+        <span style="font-size:18px;">💡</span>
+        <div>
+          <strong>Approval alert was received at dppl.admin@jsw.in.</strong> Fill in the vehicle &amp; driver particulars below and click <em>"Save &amp; Send Email"</em> to complete this allocation and email the passenger.
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 16px; margin-bottom:20px; font-size:13px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-weight:700; color:#166534;">Dispatch From:</span>
+          <code style="background:#dcfce7; color:#047857; padding:2px 8px; border-radius:4px; font-weight:800;">dppl.admin@jsw.in</code>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:380px;">
+          <span style="font-weight:700; color:#166534; white-space:nowrap;">Send To (Applicant):</span>
+          <input type="email" id="veh-applicant-email-input" value="{{ selected_req.applicant_email or '' if selected_req else '' }}" placeholder="passenger@jsw.in" style="flex:1; height:30px; font-size:12.5px; padding:4px 8px; border:1px solid #86efac; border-radius:4px; background:#ffffff;">
+        </div>
+      </div>
+
+      <!-- Error / Success Banner -->
+      <div id="veh-action-error" style="display:none; background:#fef2f2; border:1px solid #fecaca; color:#dc2626; padding:10px 14px; border-radius:6px; font-size:13px; font-weight:600; margin-bottom:16px;"></div>
+
+      <!-- The Dynamic Form -->
+      <form id="veh-allocation-form">
+        <input type="hidden" id="active-req-id" value="{{ selected_req.id if selected_req else '' }}">
+
+        <!-- Dynamic Fields Selector Controls -->
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 16px; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <div>
+              <span style="font-weight:800; font-size:13px; color:#1e293b; text-transform:uppercase; letter-spacing:.5px;">Select Vehicle Fields to Include:</span>
+              <p style="margin:2px 0 0; font-size:12px; color:#64748b;">Select which fields to include in the allocation form. You can also add custom fields.</p>
+            </div>
+            <button type="button" class="btn-secondary-action" id="btn-add-custom-field" style="height:32px; font-size:12px; padding:0 12px; font-weight:700; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;">
+              + Add Custom Field
+            </button>
+          </div>
+
+          <!-- Quick Toggle Checkboxes for Available Vehicle Fields -->
+          <div id="tab-veh-field-toggles" style="display:flex; flex-wrap:wrap; gap:8px 12px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Vehicle Allocation Particulars Inputs -->
+        <div style="margin-bottom:18px;">
+          <div style="font-weight:800; font-size:13px; color:#1e293b; margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px;">
+            Vehicle &amp; Driver Particulars:
+          </div>
+          <div id="tab-veh-fields-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+            <!-- Dynamic field cards rendered here -->
+          </div>
+        </div>
+
+        <!-- Special Instructions / Notes -->
+        <div style="margin-bottom:22px;">
+          <label style="display:block; font-weight:700; font-size:12.5px; color:#1e293b; margin-bottom:6px;" for="tab-veh-notes">
+            Special Instructions / Driver Notes for Passenger (Optional)
+          </label>
+          <textarea id="tab-veh-notes" rows="2" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 12px; font-size:13px; box-sizing:border-box;" placeholder="e.g. Driver will report 15 mins early at Port Gate 1 with passenger name placard..."></textarea>
+        </div>
+
+        <!-- Action Submit Button Bar -->
+        <div style="display:flex; align-items:center; justify-content:space-between; padding-top:14px; border-top:1px solid #e2e8f0; flex-wrap:wrap; gap:12px;">
+          <div style="font-size:12px; color:#64748b;" id="veh-last-assigned-note">
+            <!-- Rendered if previously allocated -->
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="btn-secondary-action" id="btn-reset-veh-form" style="padding:10px 18px; border-radius:6px; font-weight:700; font-size:13px; border:1px solid #cbd5e1; background:#ffffff; cursor:pointer;">
+              Reset Form
+            </button>
+            <button type="submit" id="btn-submit-veh-allocation" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; border-radius:6px; font-weight:800; font-size:14px; background:#059669; color:#ffffff; border:none; cursor:pointer; box-shadow:0 2px 6px rgba(5,150,105,0.25);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Save &amp; Send Email from dppl.admin@jsw.in</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function() {
+  var ALL_REQUESTS = {{ all_requests | tojson }};
+  var currentReq = {{ selected_req | tojson if selected_req else 'null' }};
+
+  var STANDARD_VEHICLE_FIELDS = [
+    { name: 'vehicle_number', label: 'Vehicle Registration No', placeholder: 'e.g. MH-06-BW-5432', default: true },
+    { name: 'driver_name', label: 'Driver Name', placeholder: 'e.g. Ramesh Patil', default: true },
+    { name: 'driver_contact', label: 'Driver Contact No', placeholder: 'e.g. +91 9876543210', default: true },
+    { name: 'vehicle_model', label: 'Vehicle Model / Type', placeholder: 'e.g. Toyota Innova Crysta (AC)', default: true },
+    { name: 'reporting_time', label: 'Reporting Time', placeholder: 'e.g. 08:30 AM', default: true },
+    { name: 'pickup_location', label: 'Pickup Location / Gate', placeholder: 'e.g. Port Gate 1', default: true },
+    { name: 'drop_location', label: 'Drop Location / Route', placeholder: 'e.g. Mumbai Airport T2', default: false },
+    { name: 'vendor_name', label: 'Transport Agency / Vendor', placeholder: 'e.g. DPPL Port Pool / Vendor', default: false }
+  ];
+
+  var activeFields = [];
+  var currentFilter = 'needs_allocation';
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', function() {
+    initQueueTabs();
+    initSearch();
+    initCustomFieldButton();
+    initFormSubmit();
+    initResetButton();
+
+    if (currentReq) {
+      loadRequestIntoForm(currentReq);
+    } else if (ALL_REQUESTS.length > 0) {
+      loadRequestIntoForm(ALL_REQUESTS[0]);
+    }
+
+    // Check URL req_id parameter
+    var params = new URLSearchParams(window.location.search);
+    var targetId = params.get('req_id');
+    if (targetId) {
+      var found = ALL_REQUESTS.find(function(r) { return r.id === targetId; });
+      if (found) {
+        loadRequestIntoForm(found);
+        // Switch filter to show this item
+        var isAlloc = found.details && found.details.vehicle_allocation;
+        var filterToUse = isAlloc ? 'allocated' : 'needs_allocation';
+        setFilter(filterToUse);
+      }
+    }
+  });
+
+  function initQueueTabs() {
+    var tabBtns = document.querySelectorAll('.veh-tab-btn');
+    tabBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        tabBtns.forEach(function(b) {
+          b.classList.remove('active');
+          b.style.borderColor = '#cbd5e1';
+          b.style.background = '#ffffff';
+          b.style.color = '#475569';
+        });
+        btn.classList.add('active');
+        btn.style.borderColor = '#ea580c';
+        btn.style.background = '#fff7ed';
+        btn.style.color = '#c2410c';
+
+        currentFilter = btn.getAttribute('data-filter');
+        filterList();
+      });
+    });
+
+    // Default filter to needs_allocation if any, else all
+    var needsCount = ALL_REQUESTS.filter(function(r) {
+      var isAlloc = r.details && r.details.vehicle_allocation;
+      return r.status === 'approved' && !isAlloc;
+    }).length;
+
+    if (needsCount === 0 && ALL_REQUESTS.length > 0) {
+      setFilter('all');
+    } else {
+      setFilter('needs_allocation');
+    }
+  }
+
+  function setFilter(filterName) {
+    var tabBtns = document.querySelectorAll('.veh-tab-btn');
+    tabBtns.forEach(function(btn) {
+      if (btn.getAttribute('data-filter') === filterName) {
+        btn.click();
+      }
+    });
+  }
+
+  function initSearch() {
+    var searchInput = document.getElementById('veh-req-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        filterList();
+      });
+    }
+
+    // Attach card click handlers
+    var cards = document.querySelectorAll('.veh-req-card');
+    cards.forEach(function(card) {
+      card.addEventListener('click', function() {
+        var reqId = card.getAttribute('data-req-id');
+        var found = ALL_REQUESTS.find(function(r) { return r.id === reqId; });
+        if (found) {
+          loadRequestIntoForm(found);
+        }
+      });
+    });
+  }
+
+  function filterList() {
+    var searchVal = (document.getElementById('veh-req-search').value || '').toLowerCase().trim();
+    var cards = document.querySelectorAll('.veh-req-card');
+
+    cards.forEach(function(card) {
+      var cat = card.getAttribute('data-cat');
+      var searchData = card.getAttribute('data-search') || '';
+
+      var matchesCat = false;
+      if (currentFilter === 'all') matchesCat = true;
+      else if (currentFilter === 'needs_allocation') matchesCat = (cat === 'needs_allocation');
+      else if (currentFilter === 'allocated') matchesCat = (cat === 'allocated');
+
+      var matchesSearch = (!searchVal || searchData.includes(searchVal));
+
+      if (matchesCat && matchesSearch) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function loadRequestIntoForm(reqData) {
+    currentReq = reqData;
+
+    // Highlight card
+    document.querySelectorAll('.veh-req-card').forEach(function(card) {
+      if (card.getAttribute('data-req-id') === reqData.id) {
+        card.style.borderColor = '#0284c7';
+        card.style.background = '#f0f9ff';
+      } else {
+        var isAlloc = card.getAttribute('data-cat') === 'allocated';
+        card.style.borderColor = isAlloc ? '#e2e8f0' : '#fed7aa';
+        card.style.background = isAlloc ? '#ffffff' : '#fffbf5';
+      }
+    });
+
+    document.getElementById('veh-form-empty-state').style.display = 'none';
+    document.getElementById('veh-form-content').style.display = 'block';
+
+    document.getElementById('active-req-id').value = reqData.id;
+    document.getElementById('veh-view-id').textContent = reqData.id;
+
+    // Requisition summary details
+    document.getElementById('veh-sum-name').textContent = reqData.applicant_name || 'Staff';
+    document.getElementById('veh-sum-dept').textContent = (reqData.department || '—') + ' • Emp ID: ' + (reqData.applicant_emp_id || '—');
+    document.getElementById('veh-sum-empid').textContent = reqData.applicant_emp_id || '—';
+    document.getElementById('veh-sum-dates').textContent = (reqData.start_date || '') + (reqData.end_date && reqData.end_date !== reqData.start_date ? ' to ' + reqData.end_date : '');
+    document.getElementById('veh-sum-contact').textContent = 'Contact: ' + (reqData.applicant_phone || 'N/A');
+    document.getElementById('veh-sum-purpose').textContent = reqData.purpose || 'Official Transport Requisition';
+
+    // Email recipient
+    var emailInput = document.getElementById('veh-applicant-email-input');
+    emailInput.value = reqData.applicant_email || (reqData.applicant ? reqData.applicant.email_id : '') || '';
+
+    // Status badge
+    var isAlloc = reqData.details && reqData.details.vehicle_allocation;
+    var badgeContainer = document.getElementById('veh-status-badge-container');
+    if (isAlloc) {
+      badgeContainer.innerHTML = '<span style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px;">✓ Vehicle Already Allocated</span>';
+    } else if (reqData.status === 'approved') {
+      badgeContainer.innerHTML = '<span style="background:#fff7ed; color:#ea580c; border:1px solid #fdba74; font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px;">⚠️ Action Required: Allocate Car</span>';
+    } else {
+      badgeContainer.innerHTML = '<span style="background:#f1f5f9; color:#64748b; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px;">' + reqData.status + '</span>';
+    }
+
+    // Passenger custom form fields
+    var reqsContainer = document.getElementById('veh-passenger-reqs-container');
+    reqsContainer.innerHTML = '';
+    var formFields = (reqData.details && reqData.details.form_fields) || [];
+    if (formFields.length > 0) {
+      var pills = formFields.map(function(f) {
+        if (!f.value) return '';
+        return '<span style="background:#dbeafe; padding:2px 8px; border-radius:4px; font-weight:600; margin-right:6px;">' + (f.label || f.name) + ': <strong>' + f.value + '</strong></span>';
+      }).filter(Boolean);
+      if (pills.length > 0) {
+        reqsContainer.innerHTML = '<div style="margin-bottom:4px; font-weight:700; font-size:11px; text-transform:uppercase; color:#1e40af;">Trip / Passenger Requirements:</div>' + pills.join(' ');
+        reqsContainer.style.display = 'block';
+      } else {
+        reqsContainer.style.display = 'none';
+      }
+    } else {
+      reqsContainer.style.display = 'none';
+    }
+
+    // Existing vehicle allocation values
+    var existingAlloc = reqData.details && reqData.details.vehicle_allocation;
+    var notesEl = document.getElementById('tab-veh-notes');
+    notesEl.value = (existingAlloc && existingAlloc.notes) || '';
+
+    var lastNote = document.getElementById('veh-last-assigned-note');
+    if (existingAlloc && existingAlloc.assigned_at) {
+      lastNote.innerHTML = 'Last dispatched: <strong>' + existingAlloc.assigned_at + '</strong> by <code>' + (existingAlloc.assigned_by || 'dppl.admin@jsw.in') + '</code>';
+    } else {
+      lastNote.innerHTML = '';
+    }
+
+    var existingFieldMap = {};
+    if (existingAlloc && Array.isArray(existingAlloc.fields)) {
+      existingAlloc.fields.forEach(function(f) {
+        existingFieldMap[f.name] = f;
+      });
+    }
+
+    // Extract travel particulars requested by passenger to pre-populate form
+    var formData = (reqData.details && reqData.details.form_data) || {};
+    var formFieldsList = (reqData.details && reqData.details.form_fields) || [];
+
+    function findPassengerVal(keys) {
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        if (formData[k]) return formData[k];
+        for (var j = 0; j < formFieldsList.length; j++) {
+          if (formFieldsList[j].key === k && formFieldsList[j].value) {
+            return formFieldsList[j].value;
+          }
+        }
+      }
+      return '';
+    }
+
+    var defaultPickup = findPassengerVal(['pickup_location', 'pickup', 'reporting_point']);
+    var defaultDrop = findPassengerVal(['destination', 'drop_location', 'drop_point', 'drop']);
+    var defaultReportingTime = findPassengerVal(['reporting_time', 'pickup_time', 'time']);
+    var defaultModel = findPassengerVal(['vehicle_preference', 'vehicle_type', 'car_type']);
+
+    activeFields = [];
+    STANDARD_VEHICLE_FIELDS.forEach(function(def) {
+      if (existingFieldMap[def.name]) {
+        activeFields.push({
+          name: def.name,
+          label: existingFieldMap[def.name].label || def.label,
+          value: existingFieldMap[def.name].value || '',
+          placeholder: def.placeholder,
+          isCustom: false
+        });
+      } else if (def.default || (def.name === 'drop_location' && defaultDrop)) {
+        var preVal = '';
+        if (def.name === 'pickup_location') preVal = defaultPickup;
+        else if (def.name === 'drop_location') preVal = defaultDrop;
+        else if (def.name === 'reporting_time') preVal = defaultReportingTime;
+        else if (def.name === 'vehicle_model') preVal = defaultModel;
+
+        activeFields.push({
+          name: def.name,
+          label: def.label,
+          value: preVal,
+          placeholder: def.placeholder,
+          isCustom: false
+        });
+      }
+    });
+
+    if (existingAlloc && Array.isArray(existingAlloc.fields)) {
+      existingAlloc.fields.forEach(function(f) {
+        var isStd = STANDARD_VEHICLE_FIELDS.some(function(s) { return s.name === f.name; });
+        if (!isStd) {
+          activeFields.push({
+            name: f.name,
+            label: f.label || f.name,
+            value: f.value || '',
+            placeholder: '',
+            isCustom: true
+          });
+        }
+      });
+    }
+
+    renderFieldToggles();
+    renderInputFields();
+  }
+
+  function renderFieldToggles() {
+    var togglesContainer = document.getElementById('tab-veh-field-toggles');
+    if (!togglesContainer) return;
+    togglesContainer.innerHTML = '';
+
+    STANDARD_VEHICLE_FIELDS.forEach(function(def) {
+      var isIncluded = activeFields.some(function(f) { return f.name === def.name; });
+      var label = document.createElement('label');
+      label.style.cssText = 'display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; font-weight:600; padding:4px 10px; border-radius:6px; border:1px solid ' + (isIncluded ? '#0284c7' : '#cbd5e1') + '; background:' + (isIncluded ? '#f0f9ff' : '#ffffff') + '; color:' + (isIncluded ? '#0369a1' : '#475569') + ';';
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = isIncluded;
+      cb.style.cssText = 'cursor:pointer;';
+      cb.addEventListener('change', function() {
+        if (cb.checked) {
+          if (!activeFields.some(function(f) { return f.name === def.name; })) {
+            activeFields.push({
+              name: def.name,
+              label: def.label,
+              value: '',
+              placeholder: def.placeholder,
+              isCustom: false
+            });
+          }
+        } else {
+          activeFields = activeFields.filter(function(f) { return f.name !== def.name; });
+        }
+        renderFieldToggles();
+        renderInputFields();
+      });
+
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(def.label));
+      togglesContainer.appendChild(label);
+    });
+  }
+
+  function renderInputFields() {
+    var container = document.getElementById('tab-veh-fields-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (activeFields.length === 0) {
+      container.innerHTML = '<div style="color:#94a3b8; font-size:13px; grid-column:1/-1;">No vehicle fields selected. Please check fields above to include them.</div>';
+      return;
+    }
+
+    activeFields.forEach(function(f, idx) {
+      var card = document.createElement('div');
+      card.style.cssText = 'background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; position:relative;';
+
+      var topRow = document.createElement('div');
+      topRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;';
+
+      var lblEl = document.createElement('label');
+      lblEl.style.cssText = 'margin:0; font-weight:700; font-size:12.5px; color:#1e293b;';
+      lblEl.textContent = f.label;
+
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.title = 'Remove field';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.style.cssText = 'border:none; background:transparent; font-size:18px; line-height:1; color:#94a3b8; cursor:pointer; padding:0 4px;';
+      removeBtn.addEventListener('click', function() {
+        activeFields.splice(idx, 1);
+        renderFieldToggles();
+        renderInputFields();
+      });
+
+      topRow.appendChild(lblEl);
+      topRow.appendChild(removeBtn);
+
+      var input = document.createElement('input');
+      input.type = /contact|phone|mobile/i.test(f.name) ? 'tel' : 'text';
+      input.style.cssText = 'width:100%; height:36px; font-size:13px; border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px; box-sizing:border-box;';
+      input.value = f.value || '';
+      input.placeholder = f.placeholder || ('Enter ' + f.label);
+      input.addEventListener('input', function() {
+        f.value = input.value;
+      });
+
+      card.appendChild(topRow);
+      card.appendChild(input);
+      container.appendChild(card);
+    });
+  }
+
+  function initCustomFieldButton() {
+    var btn = document.getElementById('btn-add-custom-field');
+    if (!btn) return;
+
+    btn.addEventListener('click', function() {
+      var fieldName = prompt('Enter custom field label (e.g. Gate Pass No, Vendor Name, Fuel Type):');
+      if (!fieldName || !fieldName.trim()) return;
+
+      var trimmed = fieldName.trim();
+      var key = trimmed.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+      if (activeFields.some(function(f) { return f.name === key; })) {
+        alert('This field is already added.');
+        return;
+      }
+
+      activeFields.push({
+        name: key,
+        label: trimmed,
+        value: '',
+        placeholder: 'Enter ' + trimmed,
+        isCustom: true
+      });
+
+      renderInputFields();
+    });
+  }
+
+  function initResetButton() {
+    var btn = document.getElementById('btn-reset-veh-form');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      if (currentReq) {
+        loadRequestIntoForm(currentReq);
+      }
+    });
+  }
+
+  function initFormSubmit() {
+    var form = document.getElementById('veh-allocation-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var reqId = document.getElementById('active-req-id').value;
+      if (!reqId) {
+        alert('Please select a request first.');
+        return;
+      }
+
+      var notes = document.getElementById('tab-veh-notes').value.trim();
+      var recipientEmail = (document.getElementById('veh-applicant-email-input').value || '').trim();
+      var submitBtn = document.getElementById('btn-submit-veh-allocation');
+      var errEl = document.getElementById('veh-action-error');
+
+      var filledFields = activeFields.map(function(f) {
+        return {
+          name: f.name,
+          label: f.label,
+          value: (f.value || '').trim()
+        };
+      }).filter(function(f) { return f.value.length > 0; });
+
+      if (filledFields.length === 0) {
+        errEl.textContent = 'Please fill in at least one vehicle or driver detail.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span style="display:inline-block; animation:spin 1s linear infinite;">⏳</span> Saving &amp; Sending Email...';
+      errEl.style.display = 'none';
+
+      try {
+        var res = await fetch('/admin/approvals/' + encodeURIComponent(reqId) + '/assign-vehicle', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({
+            fields: filledFields,
+            notes: notes,
+            recipient_email: recipientEmail
+          })
+        });
+
+        var data = await res.json().catch(function() { return {}; });
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'Failed to save vehicle details');
+        }
+
+        if (window.Portal && window.Portal.toast) {
+          window.Portal.toast(data.message || 'Vehicle details saved and email triggered from dppl.admin@jsw.in!', 'success');
+        } else {
+          alert(data.message || 'Vehicle details saved and email sent from dppl.admin@jsw.in!');
+        }
+
+        // Reload page to reflect updated counts and state
+        setTimeout(function() {
+          window.location.href = '/admin/vehicles?req_id=' + encodeURIComponent(reqId);
+        }, 800);
+
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>Save &amp; Send Email from dppl.admin@jsw.in</span>';
+      }
+    });
+  }
+
+})();
+</script>
+{% endblock %}
+

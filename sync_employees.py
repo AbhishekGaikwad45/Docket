@@ -34,8 +34,15 @@ def main():
 
     args = parser.parse_args()
 
-    include_staff = True
-    include_associates = False # Disabled as per request
+    if args.staff_only:
+        include_staff = True
+        include_associates = False
+    elif args.assoc_only:
+        include_staff = False
+        include_associates = True
+    else:
+        include_staff = True
+        include_associates = True
 
     print("=" * 65)
     print("  DOCKET - EMPLOYEE MASTER SYNCHRONIZATION")
